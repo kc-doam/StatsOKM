@@ -1,22 +1,25 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 
-# Custom for Visual Basic (CRLF -> LF not for classes or modules)
-*.bas text eol=crlf
-*.cls text eol=crlf
-
-# Standard to msysgit
-*.doc	 diff=astextplain
-*.DOC	 diff=astextplain
-*.docx diff=astextplain
-*.DOCX diff=astextplain
-*.dot  diff=astextplain
-*.DOT  diff=astextplain
-*.pdf  diff=astextplain
-*.PDF	 diff=astextplain
-*.rtf	 diff=astextplain
-*.RTF	 diff=astextplain
+# Custom for Visual Basic (CRLF for classes or modules)
+*.bas	filter=win1251  eol=crlf
+*.cls	filter=win1251  eol=crlf
 
 # And others formats
-*.xml  diff=astextplain
-*.XML  diff=astextplain
+.accd*	binary
+*.xml	filter=win1251  eol=crlf
+*.XML	filter=win1251  eol=crlf
+
+# Shell script that ships with msysGit
+# //github.com/msysgit/msysgit/blob/master/bin/astextplain
+# Standard to msysgit
+*.doc	diff=astextplain
+*.DOC	diff=astextplain
+*.docx	diff=astextplain
+*.DOCX	diff=astextplain
+*.dot	diff=astextplain
+*.DOT	diff=astextplain
+*.pdf	diff=astextplain
+*.PDF	diff=astextplain
+*.rtf	diff=astextplain
+*.RTF	diff=astextplain
