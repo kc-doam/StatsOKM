@@ -1,4 +1,9 @@
-﻿### r310
+﻿### r320
+
+- Создан модуль управления меню `AutoModuleRibbon.bas`
+- создан файл ленточного меню `customUI14.xml` (тест)
+
+### r310
 
 - Модуль `Statistics.bas`
 	- Добавлено в `CheckSupplier`: обновление массива **SuppDiff**

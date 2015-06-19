@@ -2,7 +2,7 @@ Attribute VB_Name = "Statistics"
 Option Explicit
 Option Base 1
 '12345678901234567890123456789012345678901234567890123456789012345678901234567890
-Public Const Let_SuppList = "Список_Поставщиков", revFile As Integer = 310
+Public Const Let_SuppList = "Список_Поставщиков", revFile As Integer = 320
 ' Внутреннее имя листа «Архив», Внутреннее имя листа «Поставщики»
 Public Const Set_arName = "ARCH_", Set_spName = "SUPP_"
 Private Const Let_OrgBodyList = "Ф/Л,Ю/Л" ' Не менять!
