@@ -6,8 +6,8 @@ Option Base 0
 
 Private ArrByte(126975) As Byte, iND As Long
 
-Public Sub ByteArrayToSystemMdw(ByVal FullPath As String) ' rev.200
-Attribute ByteArrayToSystemMdw.VB_Description = "Ã‡ÍÓÒ Á‡ÔËÒ‡Ì 12/02/2014 (danilin)"
+Public Sub ByteArrayToSystemMdw(ByVal FullPath As String) ' rev.300
+Attribute ByteArrayToSystemMdw.VB_Description = "–ú–∞–∫—Ä–æ—Å –∑–∞–ø–∏—Å–∞–Ω 12/02/2014 (–ê–ª–µ–∫—Å–µ–π aka bopoh13)"
   iND = LBound(ArrByte)
   Debug.Print "Loading  0%": Part00: Part01: Part02: Part03: Part04: Part05
   Debug.Print "Loading 14%": Part06: Part07: Part08: Part09: Part0A: Part0B
@@ -17,20 +17,20 @@ Attribute ByteArrayToSystemMdw.VB_Description = "Ã‡ÍÓÒ Á‡ÔËÒ‡Ì 12/02/2014 (dani
   Debug.Print "Loading 68%": Part1E: Part1F: Part20: Part21: Part22: Part23
   Debug.Print "Loading 82%": Part24: Part25: Part26: Part27: Part28: Part29
   Debug.Print "Loading 95%": Part2A: Part2B: Debug.Print "Loaded 100%"
-  If Err.Number = 6 Then Err.Clear ' Œ˜Ë˘‡ÂÏ Ó¯Ë·ÍÛ ÔÂÂÔÓÎÌÂÌËˇ
+  If Err.Number = 6 Then Err.Clear ' –û—á–∏—â–∞–µ–º –æ—à–∏–±–∫—É –ø–µ—Ä–µ–ø–æ–ª–Ω–µ–Ω–∏—è
   Open FullPath For Binary Access Write As #1: Put #1, , ArrByte: Close #1
 End Sub
 
 Private Function SetAsByte(ByRef ArrVar As Variant) As Long
 Dim Counter As Integer
-  On Error Resume Next ' ¬¿∆ÕŒ! »ÒÍÎ˛˜‡ÂÏ Value = Missing, ÓÒÚ‡‚Îˇˇ Õ”À‹
+  On Error Resume Next ' –í–ê–ñ–ù–û! –ò—Å–∫–ª—é—á–∞–µ–º Value = Missing, –æ—Å—Ç–∞–≤–ª—è—è –ù–£–õ–¨
     For Counter = LBound(ArrVar) To UBound(ArrVar)
       ArrByte(Counter + iND) = CByte(ArrVar(Counter))
     Next Counter: SetAsByte = Counter + iND
 End Function
 
 Private Sub Part00()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(, 1, , , 74, 101, 116, 32, 83, 121, 115, 116, 101, 109, 32, _
     68, 66, 32, 32, , 1, , , , 181, 110, 3, 98, 96, 9, 194, 85, 233, 169, 103, _
     114, 64, 63, , 156, 126, 159, 144, 255, 133, 154, 49, 197, 127, 186, 237, _
@@ -41,7 +41,7 @@ Dim ArrVar As Variant
     74, 26, 243, 152, 189, 111, 132, 102, 95, 149, 248, 208, 137, 36, 133, _
     103, 198, 31, 39, 68, 210, 238, 207, 101, 237, 255, 7, 199, 70, 161, 120, _
     22, 12, 237, 233, 45, 98, 212, 84, 6, , , 52, 46, 48)
-  iND = SetAsByte(ArrVar) + 3425 ' œÂÂÏÂ˘‡ÂÏ ÍÛÒÓ
+  iND = SetAsByte(ArrVar) + 3425 ' –ü–µ—Ä–µ–º–µ—â–∞–µ–º –∫—É—Ä—Å–æ—Ä
   ArrVar = Array(1, 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , _
     1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, _
     , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , 1, , _
@@ -235,7 +235,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part01()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(118, 53, 145, 217, 236, 218, 161, 119, 180, 89, 119, 2, 171, _
     118, 54, 128, 128, 6, 136, 112, 32, 61, 246, 31, , 130, 255, 96, 46, 210, _
     241, 59, 169, 200, 28, 81, 21, 180, 170, 249, 226, 14, 234, 110, 26, 113, _
@@ -429,7 +429,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part02()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(17, 243, 219, 222, 66, 200, 63, 109, 80, 197, 88, 123, 115, _
     121, 91, 25, 41, 255, 156, 66, 223, 239, 75, 155, 55, 200, 212, 62, 170, _
     95, 154, 27, 158, 178, 252, 198, 255, 196, 149, 197, 110, 75, 162, 54, _
@@ -623,7 +623,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part03()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(172, 111, 112, 65, 217, 169, 36, 31, 16, 122, 249, 226, 139, _
     198, 38, 195, 218, 79, 17, 60, 138, 227, 216, 23, 9, 72, 76, 208, 180, _
     112, 23, 159, 248, 145, 19, 234, 125, 15, 50, 79, 25, 137, 251, 47, 209, _
@@ -817,7 +817,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part04()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(91, 3, 176, 227, 98, 54, 142, 45, 179, 115, 223, 185, 209, _
     240, 151, 180, 229, 59, 184, 21, 105, 177, 201, 245, 99, 224, 215, 130, _
     43, 211, 109, 215, 200, 241, 247, 30, 13, 196, 206, 49, 135, 228, 40, 60, _
@@ -1010,7 +1010,7 @@ Dim ArrVar As Variant
   iND = SetAsByte(ArrVar)
 End Sub
 Private Sub Part05()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(211, 252, 204, 68, 130, 175, 117, 218, 95, 8, 136, 41, 10, _
     80, 154, 120, 93, 14, 158, 171, 151, 154, 110, 31, 69, 223, 216, 238, 123, _
     139, 249, 99, 228, 165, 196, 222, 93, 73, 179, 94, 201, 144, 53, 131, 120, _
@@ -1204,7 +1204,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part06()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(212, 158, 221, 135, 51, 152, 113, 248, 107, , 18, 220, 240, _
     57, 81, 183, 102, 75, 67, 199, 27, 42, 59, 210, 64, 101, 70, 214, 144, _
     244, 77, 67, 113, 91, 138, 170, 68, 194, 92, 171, 130, 118, 22, 199, 30, _
@@ -1398,7 +1398,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part07()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(6, 231, 247, 106, 166, 45, 11, 15, 129, 69, 133, 247, 223, _
     136, 63, 224, 146, 59, 243, 47, 18, 168, 212, 10, 255, 178, 231, 212, 124, _
     141, 45, 204, 197, 22, 152, 111, 252, 50, 231, 184, 140, 188, 206, 69, _
@@ -1592,7 +1592,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part08()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(177, 165, 109, 239, 83, 207, 202, 216, 103, 99, 185, 191, _
     72, 100, 89, 55, 20, 130, 188, 190, 15, 173, 127, 104, 80, 158, 250, 247, _
     216, 183, 97, 32, 32, 235, 92, 100, 85, 78, 227, 228, 244, 30, 55, 196, _
@@ -1786,7 +1786,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part09()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(104, 153, 42, 245, 135, 154, 33, 65, 196, 74, 154, 9, 83, _
     54, 56, 115, 130, 156, 237, 192, 24, 212, 30, 78, 212, 14, 130, 44, 146, _
     234, 198, 196, 231, 55, 211, 75, 203, 204, 213, 34, 204, 95, 223, 59, 108, _
@@ -1980,7 +1980,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part0A()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(74, 113, 101, 135, 95, 71, 52, 125, 95, 112, 40, 250, 188, _
     107, 232, 163, 15, 221, 231, 204, 147, 31, 57, 38, 124, 31, 103, 32, 133, _
     192, 76, 102, 42, 67, 132, 168, 221, 149, 231, 213, 13, 22, 154, 63, 77, _
@@ -2174,7 +2174,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part0B()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(139, 38, 230, 108, 71, 244, 175, 168, 229, 181, 124, 74, _
     110, 174, 84, 52, 117, 50, 81, 62, 170, 229, 71, 138, 166, 100, 234, 51, _
     219, 22, 174, 141, 126, 8, 67, 27, 100, 139, 164, 210, 160, 240, 65, 197, _
@@ -2368,7 +2368,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part0C()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(3, 238, 143, 37, 44, 200, 41, 236, 244, 44, 118, 249, 229, _
     75, 240, 207, 235, 155, 202, 123, 102, 38, 29, 105, 124, 57, 9, 216, 112, _
     99, 241, 15, 173, 9, 61, 69, 155, 254, 150, 162, 217, 56, 11, 157, 58, _
@@ -2562,7 +2562,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part0D()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(175, 41, 133, 246, 27, 139, 205, 182, 208, 131, 94, 246, _
     156, 225, 255, 89, 29, 97, 157, 54, 174, 202, 3, 22, 42, 251, 57, 168, _
     239, 215, 156, 78, 199, 217, 3, 167, 43, 124, 65, 173, 242, 140, 68, 110, _
@@ -2756,7 +2756,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part0E()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(218, 189, 84, 129, 56, 34, 66, 88, 56, 141, 60, 5, 164, 173, _
     161, 130, 74, 202, 3, 87, 141, 174, 53, 154, 205, 36, 107, 1, 42, 222, _
     186, 97, 79, 91, 144, 83, 125, 98, 226, 49, 247, 68, 246, 187, 158, 231, _
@@ -2950,7 +2950,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part0F()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(54, 232, 205, 222, 228, 5, 213, 30, 162, 195, 108, 19, 249, _
     171, 14, 152, 58, 197, 243, 162, 206, 245, 227, 178, 68, 163, 142, 146, _
     39, 45, 3, 118, 183, 103, 39, 215, 73, 156, 193, 54, 159, 52, 127, 232, _
@@ -3144,7 +3144,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part10()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(149, 90, 63, 35, 20, 49, 227, 246, 253, 29, 43, 41, 125, _
     60, 182, 234, 52, 40, 43, 28, 250, 63, 220, 40, 89, 54, 136, 74, 49, 151, _
     25, 207, 11, 124, 160, 59, 153, 1, 215, 131, 11, 154, 111, 13, 116, 148, _
@@ -3338,7 +3338,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part11()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(245, 81, 202, 74, 164, 140, 113, 34, 138, 78, 125, 4, 171, _
     56, 202, 36, 20, 148, 7, 249, 115, 11, 189, 146, 222, 80, 91, 39, 112, _
     109, 77, 221, 246, 195, 43, 245, 69, 41, 215, 103, 152, 199, 93, 192, 211, _
@@ -3532,7 +3532,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part12()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(147, 56, 148, 92, 252, 75, 127, 42, 23, 101, 249, 12, 225, _
     38, 42, 249, 1, 6, 91, 237, 121, 92, 138, 111, 190, 245, 76, 204, 148, _
     42, 20, 140, 28, 40, 213, 106, 33, 224, 112, 100, 7, 156, 218, 35, 151, _
@@ -3726,7 +3726,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part13()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(95, 169, 207, 6, 8, 126, 134, 71, 194, 199, 70, 237, 253, _
     57, 92, 32, 153, 58, 34, 72, 48, 125, 118, 49, 111, 181, 230, 21, 116, _
     220, 126, 206, 252, 46, 85, 51, 45, 209, 49, 24, 13, 28, 155, 146, 34, _
@@ -3920,7 +3920,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part14()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(61, 68, 7, 77, 165, 8, 89, 10, 95, 214, 243, 39, 203, 48, _
     197, 161, 100, 104, 157, 160, 194, 44, 141, 28, 74, 210, 216, 164, 159, _
     125, 112, 87, 220, 219, 4, 239, 120, 188, 34, 206, 55, 118, 247, 55, 104, _
@@ -4114,7 +4114,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part15()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(20, 28, 146, 178, 138, 223, 198, 123, 120, 235, 201, 133, _
     238, 171, 161, 136, 13, 202, 7, 183, 43, 181, 152, 21, 216, 170, 100, 239, _
     59, 108, 130, 228, 243, 205, 169, 198, 22, 190, 136, 59, 222, 85, 180, _
@@ -4308,7 +4308,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part16()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(54, 172, 102, 89, 254, 152, 7, 47, 217, 107, 179, 2, 228, _
     143, 71, 56, 96, 214, 186, 114, 69, 250, 60, 148, 221, 131, 157, 58, 109, _
     204, 241, 210, 27, 11, 209, 232, 230, 85, 255, 130, 196, 85, 214, 98, 232, _
@@ -4502,7 +4502,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part17()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(1, 36, 85, 82, 84, 35, 223, 78, 4, 232, 154, 217, 164, 8, _
     219, 140, 214, 155, 166, 247, 154, 219, 249, 110, 218, 178, 118, 203, 88, _
     96, 33, 9, 71, 4, 5, 77, 205, 194, 53, 153, 165, 9, 104, 35, 238, 127, _
@@ -4696,7 +4696,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part18()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(214, 72, 213, 222, 75, 162, 231, 210, 183, 76, 132, 204, _
     118, 196, 177, 153, 108, 151, 232, 132, 70, 140, 219, 41, 208, 185, 82, _
     19, 130, 149, 7, 157, 43, 114, 230, 170, 150, 29, 235, 45, 157, 144, 29, _
@@ -4890,7 +4890,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part19()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(56, 81, 123, 44, 54, 223, 178, 147, 78, , 120, 209, 247, _
     175, 237, 8, 244, 180, 172, 213, 63, 252, 223, 56, 90, 69, 59, 193, 197, _
     127, 42, 53, 160, 155, 200, 203, 111, 193, 132, 101, 250, 123, 13, 65, _
@@ -5084,7 +5084,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part1A()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(35, 194, 113, 106, 123, 238, 109, 30, 221, 1, 12, 25, 190, _
     255, 169, 128, 27, , 198, 143, 27, 199, 112, 105, 6, 158, 165, 232, 227, _
     249, 236, , 169, 45, 250, 46, 78, 44, 160, 162, 101, 45, 95, 170, 214, _
@@ -5278,7 +5278,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part1B()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(202, 179, 42, 9, 53, 54, 116, 232, 5, 88, 139, 192, 3, 222, _
     23, 237, 198, 210, 87, 124, 17, 191, 251, 134, 180, 135, 212, 246, 206, _
     100, 62, 164, 218, 78, 19, 183, 67, 206, 74, 133, 66, 137, 190, 121, 52, _
@@ -5472,7 +5472,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part1C()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(229, 122, 114, 38, 129, 154, 207, 255, 205, 245, 91, 93, _
     104, 217, 157, 45, 130, 185, 186, 245, 33, 62, 161, 172, 127, 109, 28, _
     120, 58, 150, 207, 59, 199, 187, 101, 55, 161, 139, 105, 71, 213, 140, _
@@ -5666,7 +5666,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part1D()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(172, 72, 92, 175, 207, 223, 106, 29, 76, 51, 219, 101, 144, _
     56, 160, 112, 206, 90, 23, 2, 234, 163, 232, 140, 60, 19, 146, 205, 217, _
     225, 57, 66, 189, 199, 95, 230, 211, 134, 157, 13, 227, 76, 204, 177, 2, _
@@ -5860,7 +5860,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part1E()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(201, 181, 161, 33, 187, 21, 101, 169, 16, 33, 68, 187, 30, _
     126, 3, 229, 141, 45, 144, 61, 135, 179, 43, 100, 161, 208, 173, 83, 81, _
     251, 160, 163, 59, 153, 139, 234, 85, 59, 9, 87, 161, 150, 15, 35, 63, _
@@ -6054,7 +6054,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part1F()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(113, 82, 202, 172, 124, 16, 109, 198, , 22, 166, 79, 244, _
     252, 246, 109, 38, 83, 38, 154, 199, 199, 117, 244, 62, 121, 92, 71, 124, _
     177, 96, 162, 10, 6, 252, 33, 179, 95, 114, 12, 212, 227, 42, 181, 1, 237, _
@@ -6248,7 +6248,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part20()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(14, 176, 67, 129, 46, 189, 214, 150, 229, 41, 110, 135, 141, _
     177, 95, 50, 229, 94, 137, 9, 173, 193, 106, 135, 169, 85, 69, 176, 243, _
     158, 59, 156, 198, 190, 224, 98, 251, 5, 204, 81, 113, 132, 129, 58, 6, _
@@ -6442,7 +6442,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part21()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(15, 233, 37, 74, 68, 180, 33, 228, 173, 210, 185, 213, 191, _
     39, 74, 141, 248, 78, 83, 14, 157, 82, 252, 78, 214, 114, 215, 241, 170, _
     151, 78, 203, 206, 239, 216, 47, 183, 4, 222, 162, 98, 22, 79, 243, 73, _
@@ -6636,7 +6636,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part22()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(52, 50, 102, 153, 68, 27, 26, 150, 30, 90, 51, 76, 253, 128, _
     50, 135, 111, 177, 133, 185, 127, 221, 138, 164, 181, 119, 177, 202, 175, _
     107, 247, 254, 117, 32, 112, 159, 183, 225, 17, 9, 5, 12, 51, 155, 171, _
@@ -6830,7 +6830,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part23()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(100, 68, 35, 91, 91, 22, 115, 71, 243, 229, 221, 155, 39, _
     69, 134, 162, 67, 170, 66, 96, 168, 126, 133, 204, 232, 123, 104, 13, 228, _
     178, 187, 37, 178, 224, 42, 151, 113, 188, 69, 191, 182, 167, 26, 46, 129, _
@@ -7024,7 +7024,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part24()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(97, 178, 159, 53, 181, 183, 223, 101, 254, 177, 238, 4, 83, _
     213, 254, 180, 212, 198, 92, 126, 160, 24, 243, 17, 157, 141, 183, 196, _
     48, 178, 238, 218, 140, 52, 45, 93, 66, 153, 32, 190, 179, 157, 109, 17, _
@@ -7218,7 +7218,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part25()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(85, 89, 177, 5, 110, 42, 160, 117, 17, 107, 178, 69, 53, _
     198, 78, 173, 62, 221, 159, 202, , 171, 24, 86, 91, 216, 228, , 98, 238, _
     10, 131, 27, 99, 82, 188, 250, 20, 36, 70, 176, 225, 2, 17, 127, 151, 170, _
@@ -7412,7 +7412,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part26()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(115, 191, 238, 149, 108, 116, 65, 124, 180, 214, 172, 55, _
     194, 9, 231, 18, 94, 222, 177, 204, 127, 73, 67, 149, 149, 19, 208, 91, _
     25, 8, 158, 254, 136, 102, 115, 246, 98, 159, 61, 186, 166, 164, 52, 183, _
@@ -7606,7 +7606,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part27()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(111, 11, 149, 193, , 57, 159, 15, 53, 249, 24, 191, 162, _
     5, 240, 183, 225, 229, 61, 130, 205, 138, 3, 54, 170, 71, 204, 35, 18, _
     247, 137, 36, 28, 76, 254, 139, 90, 206, 223, 41, 115, 69, 171, 59, 194, _
@@ -7800,7 +7800,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part28()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(122, 248, 97, 35, 217, 141, 122, 76, 205, 144, 4, 252, 19, _
     27, 41, 204, 221, 125, 80, 146, 79, 76, 180, 159, 92, 79, 14, 33, 192, _
     238, 67, 219, 198, 37, 31, , 150, 154, 83, 187, 10, 231, 17, 164, 155, _
@@ -7994,7 +7994,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part29()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(39, 36, 46, 248, 127, 29, 224, 185, 120, 25, 167, 177, 128, _
     59, 170, 57, 212, 239, 223, 50, 54, 168, 255, 83, 231, 178, 126, 3, 45, _
     152, 206, 175, 161, 166, 174, 128, 50, 109, 112, 66, 73, 188, 54, 204, _
@@ -8188,7 +8188,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part2A()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(130, 37, 197, 203, 68, 114, 255, 32, 18, 86, 149, 103, 136, _
     162, 8, 121, 245, 70, 97, 109, 40, 69, 114, 148, 69, 210, 238, 69, 201, _
     94, 21, 208, 147, 226, 123, 207, 69, 92, 83, 158, 182, 178, 116, 226, 246, _
@@ -8382,7 +8382,7 @@ Dim ArrVar As Variant
 End Sub
 
 Private Sub Part2B()
-Dim ArrVar As Variant
+Dim ArrVar() As Variant
   ArrVar = Array(83, 232, 175, 110, 22, 9, 251, 45, 47, 211, 201, 199, 218, _
     160, 184, 234, 85, 195, 94, 127, 165, 4, 31, 131, 212, 234, 69, 231, 52, _
     170, 147, 85, 15, 151, 104, 151, 127, 199, 29, 141, 64, 32, 78, 189, 239, _

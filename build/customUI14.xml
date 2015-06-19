@@ -1,0 +1,20 @@
+﻿<customUI onLoad="RibbonOnLoad" xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+	<ribbon startFromScratch="false">
+		<tabs>
+			<tab id="__TabDelivery" insertBeforeMso="TabHome" label="Статистика">
+				<group id="__GroupPaste" label="Буфер обмена">
+					<box id="__BoxPage1" boxStyle="horizontal">
+						<button idMso="PasteValues" imageMso="ContactCardPaste" label="Вставить значения" size="large" />
+						<button idMso="Copy" imageMso="PrintTitles" label="Копировать таблицу" size="large" />
+					</box>
+				</group>
+				<group id="__GroupSending1">
+					<box id="__BoxPage2" boxStyle="horizontal">
+						<button id="__Filter" imageMso="AdpStoredProcedureQueryAppendValues" label="Добавить фильтр" supertip="Добавить к параметрам фильтрации значение выделенной ячейки." onAction="AddFilter" size="large" getEnabled="GetEnabledMacro" tag="G0B1" />
+						<button idMso="SortClear" imageMso="QueryDelete" label="Очистить фильтр" size="large" />
+					</box>
+				</group>
+			</tab>
+		</tabs>
+	</ribbon>
+</customUI>
