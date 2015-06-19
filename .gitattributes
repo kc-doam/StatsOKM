@@ -7,8 +7,8 @@
 
 # And others formats
 .accd*	binary
-*.xml	filter=win1251  eol=crlf
-*.XML	filter=win1251  eol=crlf
+*.xml	text  eol=crlf
+*.XML	text  eol=crlf
 
 # Shell script that ships with msysGit
 # //github.com/msysgit/msysgit/blob/master/bin/astextplain
