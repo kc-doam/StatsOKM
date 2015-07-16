@@ -1,7 +1,7 @@
-Attribute VB_Name = "DBCreateMDWSystem"
+﻿Attribute VB_Name = "DBCreateMDWSystem"
 Option Explicit
 Option Base 0
-'12345678901234567890123456789012345678901234567890123456789012345678901234567890
+'12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
 'FullPath=Environ("UserProfile")&"\Application Data\Microsoft\Access\System.mdw"
 
 Private ArrByte(126975) As Byte, iND As Long

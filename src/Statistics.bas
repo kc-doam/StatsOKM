@@ -1,10 +1,11 @@
-Attribute VB_Name = "Statistics"
+﻿Attribute VB_Name = "Statistics"
 Option Explicit
 Option Base 1
-'12345678901234567890123456789012345678901234567890123456789012345678901234567890
-Public Const Let_SuppList = "Список_Поставщиков", revFile As Integer = 320
+'12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
+Public Const Let_SuppList = "Список_Поставщиков", revFile As Integer = 330
 ' Внутреннее имя листа «Архив», Внутреннее имя листа «Поставщики»
 Public Const Set_arName = "ARCH_", Set_spName = "SUPP_"
+Public Const Let_ContrFormList = "станд.,опер."
 Private Const Let_OrgBodyList = "Ф/Л,Ю/Л" ' Не менять!
 
 ' Рабочая книга, Рабочий лист, Имя рабочего листа/параметра
@@ -22,12 +23,18 @@ Private Cost As New Collection, Counter As Integer
 'Public BankSUPP As New Collection
 
 Private Sub Auto_Open() ' Автомакрос
-Dim mdwPath As String, Conn As Object, Rec As Object, Src As String
+Dim cstPath As String, mdwPath As String
+Dim Conn As Object, Rec As Object, Src As String
 Const Let_mdwPath = "\Application Data\Microsoft\Access\System.mdw"
-Const Let_cstFile = "X:\Avtor_M\#Finansist\YCHET\Архив\Cost.accdb" ' Цены
+Const Let_cstPath = "\Архив\Cost.accdb" ' Цены
   SettingsStatistics Settings ' Загрузка настроек книги в коллекцию
   PartNumRow = ActiveCell.Row ' Номер строки партии материалов
   
+  ' Проверка существования директории с настройками rev.330
+  Set Conn = CreateObject("Scripting.FileSystemObject") ' fso
+  cstPath = Settings("SetPath") & Let_cstPath: If Not Conn _
+    .FileExists(cstPath) Then ErrCollection 59, 1, 16, cstPath: End ' EPN = 1
+  Debug.Print Settings("SetPath"): Set Conn = Nothing
   ' Создание системной таблицы, если она не существует
   Set Conn = CreateObject("Scripting.FileSystemObject") ' fso
   mdwPath = Environ("UserProfile") & Let_mdwPath ' Полный путь к файлу
@@ -49,13 +56,13 @@ Const Let_cstFile = "X:\Avtor_M\#Finansist\YCHET\Архив\Cost.accdb" ' Цен
     Set Conn = CreateObject("ADODB.Connection") ' Открываем Connection
     Conn.ConnectionTimeout = 5
     Conn.Mode = 1 ' 1 = adModeRead, 2 = adModeWrite, 3 = adModeReadWrite
-    Src = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" & Let_cstFile & ";"
+    Src = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" & cstPath & ";"
     'Src = Src & "Jet OLEDB:Engine Type=6;" ' Тип подключения
     Src = Src & "Jet OLEDB:Encrypt Database=True;"
     Src = Src & "Jet OLEDB:Database Password=" & Settings("CostPass") & ";"
     Src = Src & "Jet OLEDB:System database=" & mdwPath ' Системная таблица
     Conn.Open ConnectionString:=Src ', UserId:="admin", Password:=""
-    If Err Then ErrCollection Err.Number, 1, 16, Let_cstFile: End ' EPN = 1
+    If Err Then ErrCollection Err.Number, 1, 16, cstPath: End ' EPN = 1
   On Error GoTo 0
   
   Set Rec = CreateObject("ADODB.Recordset") ' Создаём RecordSet
@@ -89,14 +96,14 @@ Const Let_cstFile = "X:\Avtor_M\#Finansist\YCHET\Архив\Cost.accdb" ' Цен
               & " AS '" & Counter & "'"
           Next Counter: .Open Source:=Src, ActiveConnection:=Conn
           Cost.Add .GetRows(Rows:=-1), cnfRenew: .Close
-        End If
+        End If: cnfRenew = ""
       On Error GoTo 0
     Next SuppDiff
   End With: Set Rec = Nothing: Set Conn = Nothing
   
   Set Conn = CreateObject("Scripting.FileSystemObject") ' fso
-    Debug.Print Mid(Log(Conn.GetFile(Let_cstFile).DateLastModified) - 10, 3, 8)
-    'MsgBox Mid(Log(Conn.GetFile(Let_cstFile).DateLastModified) - 10, 3, 8)
+    Debug.Print Mid(Log(Conn.GetFile(cstPath).DateLastModified) - 10, 3, 8)
+    'MsgBox Mid(Log(Conn.GetFile(cstPath).DateLastModified) - 10, 3, 8)
   Set Conn = Nothing
   
   App_Wb.Sheets(Sh_List("SF_")).Activate ' ВАЖНО! Уйти с листа «Поставщики»
@@ -107,16 +114,13 @@ Const Let_cstFile = "X:\Avtor_M\#Finansist\YCHET\Архив\Cost.accdb" ' Цен
     .Comment = "Список листа Поставщики": .RefersTo = "=OFFSET('" _
       & App_Wb.Sheets(Sh_List(Set_spName)).Name & "'!$J$1,1,,COUNTA('" _
       & App_Wb.Sheets(Sh_List(Set_spName)).Name & "'!$J:$J)-1,)"
-  End With: cnfRenew = ""
-  If Not App_Wb.ReadOnly Then App_Wb.Save ' Если доступен, сохранить
-  
-  'Application.ScreenUpdating = False ' ВЫКЛ Обновление экрана
-  'For Each Conn In App_Wb.Sheets ' Временные параметры
-  '  UnprotectSheet Conn
-    'ProtectSheet Conn
-  'Next Conn
-  
-  'Application.ScreenUpdating = True ' ВКЛ Обновление экрана
+  End With
+  If Not App_Wb.ReadOnly Then
+    For Each Conn In App_Wb.Sheets
+'      UnprotectSheet Conn: ProtectSheet Conn ' Временные параметры rev.330
+      ProtectSheet Conn ' Временные параметры rev.330
+    Next Conn: cnfRenew = "": App_Wb.Save ' Если доступен, сохранить
+  End If: cnfRenew = ActiveSheet.Name
 End Sub
 
 ' Установка рабочей конфигурации листов
@@ -131,7 +135,7 @@ Dim App_Sh As Worksheet, LastRow As Long
         .ScrollRow = 1: .ScrollColumn = 1: .FreezePanes = False
       End With
       
-      LastRow = App_Sh.UsedRange.Rows.Count + 1 ' Количество строк
+      LastRow = App_Sh.UsedRange.Rows.Count ' Количество строк rev.330
       ' Очистка форматов, Очистка условного форматирования
       .Cells.ClearFormats: .Cells.FormatConditions.Delete
       ' Очистка группировки, Очистка проверки данных
@@ -145,7 +149,7 @@ Dim App_Sh As Worksheet, LastRow As Long
             'SendKeys "^{HOME}", False ' rev.250 Фокус должен быть на MS Excel
             '.Cells(1, 1).AutoFilter
             
-            If .AutoFilterMode Then .ShowAllData ' Автофильтр
+            If .AutoFilterMode Then .ShowAllData Else .Cells(1, 1).AutoFilter ' Автофильтр
             
             If Err Then ErrCollection Err.Number, 3, 48, .Name ' EPN = 3
           On Error GoTo 0
@@ -158,11 +162,11 @@ Dim App_Sh As Worksheet, LastRow As Long
           End If
           ' Форматирование колонок
           .Columns("D:D").NumberFormat = "@"
-          .Columns("K:K").NumberFormat = "[$-419]dd/mm/yyyy"" "";@"
+          .Columns("K:K").NumberFormat = "m/d/yyyy"
           If .CodeName = Set_spName Then
-            .Columns("Q:Q").NumberFormat = "[$-419]dd/mm/yyyy"" "";@"
+            .Columns("Q:Q").NumberFormat = "m/d/yyyy"
             .Columns("R:R").NumberFormat = "[$-419]"".+. (""0000"") "";@"
-            .Columns("V:V").NumberFormat = "[$-419]000-000-000"" ""00;@"
+            .Columns("V:V").NumberFormat = "[$-419]000-000-000-00;@"
             .Columns("W:W").NumberFormat = _
               "[<=9999999999]0000000000;000000000000;@"
             .Columns("X:X").NumberFormat = "[$-419]000000000;@"
@@ -257,9 +261,10 @@ Dim App_Sh As Worksheet, LastRow As Long
             End With
             With .Range("K2:K9").Validation
               .Add Type:=xlValidateDate, AlertStyle:=xlValidAlertStop, _
-                Operator:=xlGreaterEqual, Formula1:="1/1/2009"
+                Operator:=xlGreaterEqual, Formula1:=Replace( _
+                Settings("date0"), "#", "")
               .ErrorTitle = "Дата актуальности"
-              .ErrorMessage = "Необходимо ввести дату не раньше 01.01.2009 "
+              .ErrorMessage = "Необходимо ввести дату не раньше " & .Formula1
               .ShowError = True: .IgnoreBlank = True
             End With
             With .Range("M2:M9").Validation
@@ -270,16 +275,18 @@ Dim App_Sh As Worksheet, LastRow As Long
             End With
             With .Range("Q2:Q9").Validation
               .Add Type:=xlValidateDate, AlertStyle:=xlValidAlertStop, _
-                Operator:=xlGreaterEqual, Formula1:="1/1/1940"
+                Operator:=xlGreaterEqual, Formula1:=DateAdd( _
+                "m", -840, Replace(Settings("date0"), "#", ""))
               .ErrorTitle = "Дата рождения"
-              .ErrorMessage = "Необходимо ввести дату не раньше 01.01.1940 "
+              .ErrorMessage = "Необходимо ввести дату не раньше " & .Formula1
               .ShowError = True: .IgnoreBlank = True
             End With
             With .Range("R2:R9").Validation
               .Add Type:=xlValidateWholeNumber, AlertStyle:=xlValidAlertStop, _
-                Operator:=xlGreater, Formula1:="2009"
+                Operator:=xlGreaterEqual, Formula1:=DatePart( _
+                "yyyy", Replace(Settings("date0"), "#", ""))
               .ErrorTitle = "Заявление о проф. вычете"
-              .ErrorMessage = "Необходимо ввести год не меньше 2009 "
+              .ErrorMessage = "Необходимо ввести год не меньше " & .Formula1
               .ShowError = True: .IgnoreBlank = True
             End With
             With .Range("V2:V9").Validation
@@ -288,7 +295,7 @@ Dim App_Sh As Worksheet, LastRow As Long
                 Formula2:="99999999999"
               .ErrorTitle = "СНИЛС"
               .ErrorMessage = "Страховой номер в пенсионном фонде должен " _
-                & "содержать от 9 до 12 цифр "
+                & "содержать от 9 до 11 цифр "
               .ShowError = True: .IgnoreBlank = True
             End With
             With .Range("W2:W9").Validation ' ИНН
@@ -318,22 +325,31 @@ Dim App_Sh As Worksheet, LastRow As Long
             'SendKeys "^{HOME}", False ' rev.250 Фокус должен быть на MS Excel
             '.Cells(1, 1).AutoFilter
             
-            If .AutoFilterMode Then .ShowAllData ' Автофильтр
+            If .AutoFilterMode Then .ShowAllData Else .Cells(1, 1).AutoFilter ' Автофильтр
             
             If Err Then ErrCollection Err.Number, 3, 48, .Name ' EPN = 3
           'On Error GoTo 0
-          .Columns("E:H").Locked = False: .Columns("J:W").Locked = False
-          .Columns("Y:AT").Locked = False: .Columns("AV:BD").Locked = False
-          .Columns("BF:BH").Locked = False: .Columns("BK").Locked = False
-          .Columns("BM:BQ").Locked = False: .Columns("BT").Locked = False
-          .Columns("BW:BX").Locked = False: .Rows("1:1").Locked = True
-          .Columns("B:D").Columns.Group: .Columns("H:Q").Columns.Group
-          .Columns("W:Y").Columns.Group: .Columns("AA:AC").Columns.Group
-          .Columns("AE:AN").Columns.Group: .Columns("AJ:AM").Columns.Group
+          .Columns("E:I").Locked = False: .Columns("K:R").Locked = False
+          .Columns("T:AA").Locked = False ' rev.330
+          .Columns("AC:AE").Locked = False: .Columns("AG:AO").Locked = False
+          .Columns("AQ").Locked = False: .Columns("AS").Locked = False
+          .Columns("AV:AW").Locked = False: .Rows("1:1").Locked = True
+          .Columns("B:D").Columns.Group: .Columns("I:R").Columns.Group
+          .Columns("Y:AA").Columns.Group: .Columns("AC:AE").Columns.Group
+          .Columns("AG:AQ").Columns.Group: .Columns("AL:AO").Columns.Group
           ' Закрепление области
           .Range("G2").Select: ActiveWindow.FreezePanes = True
+          With Selection ' Выделяем ячейку в последней строке
+            If .Row < LastRow Then .Offset(, -2).End(xlDown).Select ' rev.330
+          End With
           ' Форматирование колонок
           .Columns("A:D").NumberFormat = "General"
+          .Range("F:O,Q:Q,T:X").NumberFormat = "m/d/yyyy"
+          'With
+          '  .NumberFormat = "#,##0"
+          '  .HorizontalAlignment = xlRight
+          '  .IndentLevel = 1
+          'End With
       End Select: ProtectSheet App_Sh
     End With
   Next App_Sh
@@ -356,7 +372,7 @@ Dim i As Integer: Counter = 0: i = 2
         With UnprotectSheet(App_Wb.Sheets(Sh_List(Set_arName)))
         'With App_Wb.Sheets(Sh_List(Set_arName))
           Do Until IsEmpty(.Cells(i, 10)) ' Счётчик строк ' Выполнять ДО
-            ' Поставщик без «Даты актуальности» не добаляется
+            ' Поставщик без «Даты актуальности» не добавляется
             If .Cells(i, 10) = SuppDiff(10) _
             And .Cells(i, 11) = CDate(SuppDiff(11)) Then Counter = i
             i = i + 1
@@ -497,17 +513,21 @@ Dim SuppCost As Variant
         For Counter = LBound(SuppCost) To UBound(SuppCost)
           PartRow = SuppCost(Counter)
           Select Case Counter
-            Case 2: GetCosts = GetCosts & "=RC[-10]*" & PartRow ' Группа 0
-            Case 3: GetCosts = GetCosts & "+RC[-9]*" & PartRow ' Группа 1
-            Case 4: GetCosts = GetCosts & "+RC[-8]*" & PartRow ' Группа 2
-            Case 6: GetCosts = GetCosts & "+RC[-5]*" & PartRow ' НУМ 0
-            Case 7: GetCosts = GetCosts & "+RC[-4]*" & PartRow ' НУМ 1
-            Case 8: GetCosts = GetCosts & "+RC[-3]*" & PartRow ' НУМ 2
-            Case 9: GetCosts = GetCosts & "+RC[-7]*" & PartRow ' НАШ 1
-            Case 10: GetCosts = GetCosts & "+RC[-6]*" & PartRow ' НАШ 2
+            Case 2: GetCosts = "=RC[-11]*" & PartRow ' Группа 0
+            Case 3: GetCosts = GetCosts & "+RC[-10]*" & PartRow ' Группа 1
+            Case 4: GetCosts = GetCosts & "+RC[-9]*" & PartRow ' Группа 2
+            Case 6: If PartRow > 0 Then GetCosts = Replace(GetCosts, _
+              "RC[-11]", "(RC[-11]-RC[-6])") & "+RC[-6]*" & PartRow ' НУМ 0
+            Case 7: If PartRow > 0 Then GetCosts = Replace(GetCosts, _
+              "RC[-10]", "(RC[-10]-RC[-5])") & "+RC[-5]*" & PartRow ' НУМ 1
+            Case 8: If PartRow > 0 Then GetCosts = Replace(GetCosts, _
+              "RC[-9]", "(RC[-9]-RC[-4])") & "+RC[-4]*" & PartRow ' НУМ 2
+            Case 9: GetCosts = GetCosts & "+RC[-8]*" & PartRow ' НАШ 1
+            Case 10: GetCosts = GetCosts & "+RC[-7]*" & PartRow ' НАШ 2
             'Case 12: GetCosts = GetCosts & "+RC[-3]*" & PartRow ' Оф письма Ф/Л
-            'Case 13: GetCosts = GetCosts & "+RC[-2]*" & PartRow ' Бухонлайн Ф/Л
-            'Case 14: GetCosts = GetCosts & "+RC[-1]*" & PartRow ' Кодекс Ф/Л
+            'Case 14: GetCosts = GetCosts & "+RC[-2]*" & PartRow ' Бухонлайн Ф/Л
+            Case 13: If PartRow > 0 Then GetCosts = GetCosts _
+              & "+RC[-1]*" & PartRow ' Кодекс Ф/Л
           End Select
         Next Counter
       End If
@@ -548,4 +568,8 @@ End Sub
 
 Private Sub SendKeyEnter() ' Эмуляция нажатия клавиши «Enter»
   SendKeys "{ESC}", True: SendKeys "{ENTER}", False ' Костыль
+End Sub
+
+Private Sub SendKeysCtrlV() ' Эмуляция нажатия клавиш «Ctrl+V»
+  Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone
 End Sub

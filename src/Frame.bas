@@ -1,7 +1,7 @@
-Attribute VB_Name = "Frame"
+﻿Attribute VB_Name = "Frame"
 Option Explicit
 Option Base 1
-'12345678901234567890123456789012345678901234567890123456789012345678901234567890
+'12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
 
 Private Counter As Integer ' Счётчик
 
@@ -13,8 +13,10 @@ End Property
 Public Sub SettingsStatistics(ByRef Settings As Collection) ' rev.300
 Dim iND As Object, Bank As String, SubBank As String
 Const Set_cnfName = "CONF_" ' Внутреннее имя листа «Настройки»
+Const Let_accPath = "X:\Avtor_M\#Finansist\YCHET" ' Директория «YCHET» rev.330
   ' ВАЖНО! Обновление списка с Индексами листов
   If GetSheetList(Set_cnfName) < 1 Then ErrCollection 1001, 1, 16 ' EPN = 1
+'  Worksheets(Sh_List(Set_cnfName)).Visible = xlSheetVeryHidden ' СКРЫТЬ rev.330
   RemoveCollection Settings: Settings.Add "#1/1/2009#", "date0" ' для SQL
   For Each iND In App_Wb.Sheets(Sh_List(Set_cnfName)).Names ' Из листа «Настройки»
     With iND
@@ -24,7 +26,8 @@ Const Set_cnfName = "CONF_" ' Внутреннее имя листа «Наст�
           Settings.Add CStr(.RefersToRange.Value), SubBank
       Else: ErrCollection 57, 1, 16, "'" & .Name & "'": End If ' EPN = 1
     End With
-  Next iND
+  Next iND: Settings.Add IIf(Len(Dir(Let_accPath, vbDirectory)) > 0, _
+    Let_accPath, ActiveWorkbook.Path), "SetPath" ' rev.330
 End Sub
 
 ' Обновление списка Индексов листов
@@ -44,7 +47,7 @@ Public Sub ProtectSheet(ByRef Sh As Worksheet) ' Защитить лист
     Sh.Protect Password:=Settings("CostPass"), UserInterfaceOnly:=True, _
       Contents:=True, AllowFiltering:=True, AllowDeletingRows:=True, _
       AllowFormattingColumns:=True, DrawingObjects:=False
-    If Err Then ErrCollection Err.Number, 2, 16 ' EPN = 2
+    If Err Then ErrCollection Err.Number, 2, 16, Sh.Name ' EPN = 2
 End Sub
 
 ' Снять защиту с листа
@@ -67,6 +70,7 @@ Dim LastRow As Long: LastRow = Sh.UsedRange.Rows.Count + 1 ' Последняя 
     .Orientation = xlTopToBottom: .Apply
   End With
 End Sub
+
 ' Удаление коллекции
 Private Sub RemoveCollection(ByRef CollectionName As Collection) ' rev.300
   For Counter = 1 To CollectionName.Count: CollectionName.Remove 1: Next Counter
@@ -102,9 +106,13 @@ Dim Ask As Byte, Msg As String, Title As String:
     Case 20: Ask = 0: Msg = "У поставщика '" & Str & "' изменились основные " _
       & "данные. " & vbCrLf & "Перед сохранением необходимо изменить поле " _
       & "'Дата актуальности'. " & vbCrLf: Title = "Ошибка ввода данных "
-    Case 30: Msg = "Не найдены цены " & Str & ". "
+    Case 30: If Str Like "*''*" Then _
+      Ask = 5: Msg = "Не указан поставщик " & Right(Str, 13) & ". ": Icon = 48 _
+      Else: Msg = "Не найдены цены " & Str & ". " ' rev.330
     Case 40: Ask = 4: Msg = "Не найдены цены " & Str & ". "
     Case 57: Msg = "В настройках " & Str & " обнаружена битая ссылка. "
+    Case 59: Msg = "Файл '" & Str & "' не найден! " _
+      & "Работа с данными невозможна!": Title = "Ошибка открытия файла "
     Case 457: Ask = 2: Msg = "Невозможно обновить коллекцию с ценами '" & Str _
       & "'. Работа с данными невозможна! "
     Case 1001: Ask = 3: Msg = "Лист 'Настройки' не найден! " _
@@ -132,6 +140,8 @@ Dim Ask As Byte, Msg As String, Title As String:
       & "файла '" & Windows(1).Caption & "'. ": Title = "Критическая ошибка "
     Case 4: Msg = Msg & vbCrLf & "Проверьте 'Категорию цен' у поставщика, " _
       & "затем проставьте 'Дату поступления в ОКМ'. "
+    Case 5: Msg = Msg & vbCrLf & "Выберите поставщика " _
+      & "или удалите 'Дату поступления в ОКМ'. "
   End Select: MsgBox Msg, Icon, Title & IIf(ErrNumber > 0, ErrPartNum & "x", _
     "ADODB ") & ErrNumber: If Ask = 3 Then End
 End Sub

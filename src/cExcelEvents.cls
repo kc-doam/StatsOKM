@@ -1,4 +1,4 @@
-VERSION 1.0 CLASS
+﻿VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
@@ -9,9 +9,9 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
 Option Base 1
-'12345678901234567890123456789012345678901234567890123456789012345678901234567890
+'12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
 
-Private WithEvents App As Application
+Private WithEvents App As Application, Clipbord_RangeAddress As String
 Attribute App.VB_VarHelpID = -1
 Private Count As Long  ' Счётчик; Если с минусом, то номер строки
 
@@ -19,6 +19,8 @@ Private Sub Class_Initialize() ' Open #1.2
   Set App = Application
   ' Запретить ввод без перемещения курсора. Не работает при выборе из списка
   App.OnKey "^~", "SendKeyEnter": App.OnKey "^{ENTER}", "SendKeyEnter"
+  ' Вставка данных через горячие клавиши rev.330
+  App.OnKey "^v", "SendKeysCtrlV": App.OnKey "+{INSERT}", "SendKeysCtrlV"
 End Sub
 
 Private Sub App_WorkbookOpen(ByVal Wb As Workbook) ' Open #1.3
@@ -30,6 +32,7 @@ Private Sub App_WorkbookActivate(ByVal Wb As Workbook) ' Open #1.4
     If App_Wb.FullName = Wb.FullName Then _
       App.CellDragAndDrop = False: App.MoveAfterReturnDirection = xlToRight
     If Err Then ErrCollection Err.Number, 2, 16: End ' EPN = 2
+    Clipbord_RangeAddress = Selection.Address ' Для буфера
 End Sub
 
 Private Sub App_WorkbookBeforeClose(ByVal Wb As Workbook, _
@@ -51,23 +54,27 @@ ByVal SaveAsUI As Boolean, Cancel As Boolean) ' Close #1.2
       'Debug.Print Cancel; Len(cnfRenew): Stop
       If Not Cancel And Len(cnfRenew) > 0 Then
         If IsArray(SuppDiff) And SuppNumRow > 1 Then RecordCells True ' ЗАПИСЬ
-        SpecificationSheets Wb.ActiveSheet.Index
+        'SpecificationSheets Wb.ActiveSheet.Index
       End If
     End If: If Err Then ErrCollection Err.Number, 2, 16: End ' EPN = 2
 End Sub
 
 Private Sub App_WorkbookDeactivate(ByVal Wb As Workbook) ' Close #1.3
-  On Error Resume Next ' Деактивация книги работает только в окне документа
+  'On Error Resume Next ' Деактивация книги работает только в окне документа
     If App_Wb.FullName = Wb.FullName Then
-      ''Stop
-      App.CellDragAndDrop = True: App.MoveAfterReturnDirection = xlDown
+      If App.CutCopyMode Then ' Если ячейки скопированы в буфер
+        App.CellDragAndDrop = True: App.MoveAfterReturnDirection = xlDown
+        App_Wb.Sheets(cnfRenew).Range(Clipbord_RangeAddress).Copy
+      Else
+        App.CellDragAndDrop = True: App.MoveAfterReturnDirection = xlDown
+      End If
       'If GetSheetList(Set_spName) > 0 Then
       '  Debug.Print Set_spName; " "; Wb.Sheets(Sh_List(Set_spName)).CodeName
       '  Debug.Print Set_spName: Stop
       If Wb.Sheets(GetSheetList(Set_spName)).Name = cnfRenew _
       And IsArray(SuppDiff) And SuppNumRow > 1 Then
         RecordCells CheckSupplier
-        SuppDiff = Empty: ProtectSheet Wb.ActiveSheet
+        ' см.App_SheetDeactivate - SuppDiff = Empty: ProtectSheet Wb.ActiveSheet
       End If
     End If: If Err Then ErrCollection Err.Number, 2, 16: End ' EPN = 2
 End Sub
@@ -87,7 +94,8 @@ Private Sub App_SheetDeactivate(ByVal Sh As Object) ' #S Серый лист
   ''Stop: Debug.Print SuppNumRow; Selection.Row
   If Sh.CodeName = Set_spName And IsArray(SuppDiff) _
   And SuppNumRow > 1 Then RecordCells CheckSupplier
-  SuppDiff = Empty: ProtectSheet Sh
+  ' Нельзя применять ProtectSheet Sh - стирается буфер
+  ' Нельзя применять SuppDiff = Empty - возникает ошибка
 End Sub
 
 Private Sub App_SheetActivate(ByVal Sh As Object) ' #S Белый лист
@@ -97,8 +105,10 @@ Private Sub App_SheetActivate(ByVal Sh As Object) ' #S Белый лист
     ' Создаём массив с изменениями о поставщике rev.310
     SuppDiff = MultidimArr(Sh.Cells(SuppNumRow, 1) _
       .Resize(, 15).Value, 1) ' Исходные данные до ФИО = 15
-  End If: cnfRenew = Sh.Name ': App.ScreenUpdating = True ' ВКЛ Обновление экрана
+  End If ': App.ScreenUpdating = True ' ВКЛ Обновление экрана
   Application.Cursor = xlDefault ' Восстановить Курсор «по умолчанию»
+  Clipbord_RangeAddress = Selection.Address ' Для буфера
+  If Len(cnfRenew) > 0 Then AutoOpenControls: cnfRenew = Sh.Name ' rev.330
 End Sub
 
 
@@ -115,7 +125,8 @@ ByVal Target As Range, Cancel As Boolean)
       Else Sh.Activate: Cancel = True ' Отменяем событие «Двойной клик»
     End With: ProtectSheet App_Wb.Sheets(Sh_List(Set_arName))
   End If
-  If (Sh.CodeName = "SF_" Or Sh.CodeName = "SB_") And Target.Locked Then _
+  Stop
+  If Sh.CodeName Like "[OQS]?_" And Target.Locked Then _
     Cancel = True: SendKeys "{F2}", False ' rev.250 Фокус должен быть на MS Excel
   App.ScreenUpdating = True ' ВКЛ Обновление экрана
 End Sub
@@ -161,16 +172,18 @@ Dim cell As Range ' Не работает при выборе из списка
     'App_SheetActivate Sh ' Костыль
   End If
   
-  If (Sh.CodeName = "SF_" Or Sh.CodeName = "SB_") And Target.Row > 1 Then
-    UnprotectSheet Sh
-    If Target.Column = 5 And Not IsEmpty(Sh.Cells(Target.Row - 1, 5)) Then
+  If Sh.CodeName Like "[OQS]?_" And Target.Row > 1 Then
+    If Target.Column = 5 _
+    And Not IsEmpty(Sh.Cells(Target.Row - 1, 5)) Then
+      ' And IsEmpty(Sh.Cells(Target.Row, 5)) ' ОШИБКА! В прошлых записях нет списка rev.330
+      UnprotectSheet Sh
       With Sh.Cells(Target.Row, 5).Validation
         .Delete: .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
           Formula1:="=" & Let_SuppList ' Добавляем список в ячейку
         .ErrorTitle = "Поставщик (кратко)"
         .ErrorMessage = "Необходимо выбрать значение из списка "
         .ShowError = True: .IgnoreBlank = True
-      End With
+      End With: ProtectSheet Sh ' rev.330
     End If
     If (Target.Column = 6 Or Target.Column = 7) And PartNumRow > 1 Then
       With Sh.Cells(PartNumRow, Target.Column)
@@ -178,21 +191,28 @@ Dim cell As Range ' Не работает при выборе из списка
         GetSuppRow Sh, .Row ' Поиск строки SuppNumRow у поставщика
         If Not IsEmpty(Sh.Cells(.Row, .Column - 1)) And SuppNumRow > 0 Then
           'cnfRenew = Sh.Parent.Sheets(Sh_List(Set_arName)).Name
-          Sh.Cells(.Row, 1).FormulaR1C1 = "=TEXT(R" & .Row & "C9,""ММММ.ГГ"")"
+          Sh.Cells(.Row, 1).FormulaR1C1 = "=TEXT(R" & .Row & "C6,""ММММ.ГГ"")"
           Sh.Cells(.Row, 2).FormulaR1C1 = "='" & cnfRenew & "'!R" & SuppNumRow & "C4"
           Sh.Cells(.Row, 2).NumberFormat = "General"
           Sh.Cells(.Row, 3).FormulaR1C1 = "='" & cnfRenew & "'!R" & SuppNumRow & "C5"
           Sh.Cells(.Row, 4).FormulaR1C1 = "='" & cnfRenew & "'!R" & SuppNumRow & "C8"
-          Sh.Cells(.Row, 6).NumberFormat = "dd/mm/yyyy"
+          Sh.Cells(.Row, 6).NumberFormat = "m/d/yyyy"
+          UnprotectSheet Sh ' Форма договора rev.310
+          With Sh.Cells(.Row, 19).Validation
+            .Delete: .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+              Formula1:=Let_ContrFormList
+            .IgnoreBlank = True: .InCellDropdown = True
+            .Parent.Locked = False
+          End With: ProtectSheet Sh ' rev.330
           ''Stop ' STOP
           Set cell = Sh.Parent.Sheets(Sh_List(Set_arName)).Cells(SuppNumRow, 1)
           ' ЦЕНЫ КФ
-          Sh.Cells(.Row, 26).FormulaR1C1 = "=SUM(R" & .Row & "C23:R" & .Row & "C25)"
-          Sh.Cells(.Row, 30).FormulaR1C1 = "=SUM(R" & .Row & "C27:R" & .Row & "C29)"
-          Sh.Cells(.Row, 40).FormulaR1C1 = "=SUM(R" & .Row & "C36:R" & .Row & "C39)"
-          Sh.Cells(.Row, 41).FormulaR1C1 = GetCosts(Sh, .Row, cell)
-          Sh.Cells(.Row, 42).FormulaR1C1 = "=IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""НДС"",R" & .Row & "C41*0.18,IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""УСН"",""без НДС"",""""))"
-          Sh.Cells(.Row, 44).FormulaR1C1 = "=SUM(R" & .Row & "C41:R" & .Row & "C43)"
+          Sh.Cells(.Row, 28).FormulaR1C1 = "=SUM(R" & .Row & "C25:R" & .Row & "C27)"
+          Sh.Cells(.Row, 32).FormulaR1C1 = "=SUM(R" & .Row & "C29:R" & .Row & "C31)"
+          Sh.Cells(.Row, 42).FormulaR1C1 = "=SUM(R" & .Row & "C38:R" & .Row & "C41)"
+          Sh.Cells(.Row, 44).FormulaR1C1 = GetCosts(Sh, .Row, cell)
+          Sh.Cells(.Row, 46).FormulaR1C1 = "=IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""НДС"",(R" & .Row & "C44+R" & .Row & "C45)*0.18,IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""УСН"",""без НДС"",""""))"
+          Sh.Cells(.Row, 47).FormulaR1C1 = "=SUM(R" & .Row & "C44:R" & .Row & "C46)"
           ' ЦЕНЫ БО
           'Sh.Cells(.Row, 57).FormulaR1C1 = "=SUM(R" & .Row & "C53:R" & .Row & "C56)"
           'Sh.Cells(.Row, 70).FormulaR1C1 = GetCosts(Sh, .Row, cell)
@@ -205,6 +225,8 @@ Dim cell As Range ' Не работает при выборе из списка
           Next cell
         End If
       End With: PartNumRow = Target.Row
-    End If: ProtectSheet Sh
-  End If ': Application.ScreenUpdating = True ' ВКЛ Обновление экрана
+    End If
+  End If: AutoOpenControls ' rev.330
+  ': Application.ScreenUpdating = True ' ВКЛ Обновление экрана
+  Clipbord_RangeAddress = Selection.Address ' Для буфера
 End Sub

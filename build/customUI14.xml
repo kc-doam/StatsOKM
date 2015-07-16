@@ -1,20 +1,31 @@
 ﻿<customUI onLoad="RibbonOnLoad" xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+	<commands>
+		<!-- Отключить в меню Файл кнопку Сохранить как Excel 2010 -->
+		<command idMso="FileSaveAs" enabled="false" />
+		<!-- Отключить в меню Файл кнопку Сохранить как Excel 2013 -->
+		<!--command idMso="TabSave" enabled="false" /-->
+		<!-- Выполнить действие onAction при нажатии на кнопку idMso -->
+		<command idMso="SheetProtect" onAction="LetSheetProtect" />
+	</commands>
 	<ribbon startFromScratch="false">
 		<tabs>
-			<tab id="__TabDelivery" insertBeforeMso="TabHome" label="Статистика">
+			<tab idMso="TabHome" getVisible="GetVisibleMenu" />
+			<!-- Свойство keytip не может начитаться на занятую "АВДЕЗЛМОПРСФЧЫЭЮЯ" -->
+			<tab id="__TabDelivery" keytip="Т" insertBeforeMso="TabHome" label="Статистика">
 				<group id="__GroupPaste" label="Буфер обмена">
 					<box id="__BoxPage1" boxStyle="horizontal">
-						<button idMso="PasteValues" imageMso="ContactCardPaste" label="Вставить значения" size="large" />
-						<button idMso="Copy" imageMso="PrintTitles" label="Копировать таблицу" size="large" />
+						<button idMso="PasteValues" imageMso="ContactCardPaste" keytip="В" label="Вставить значения" screentip="Вставить (Ctrl+V)" supertip="Вставить скопированные значения из буфера обмена." size="large" />
+						<button idMso="Copy" imageMso="PrintTitles" keytip="К" label="Копировать таблицу" size="large" />
 					</box>
 				</group>
 				<group id="__GroupSending1">
 					<box id="__BoxPage2" boxStyle="horizontal">
-						<button id="__Filter" imageMso="AdpStoredProcedureQueryAppendValues" label="Добавить фильтр" supertip="Добавить к параметрам фильтрации значение выделенной ячейки." onAction="AddFilter" size="large" getEnabled="GetEnabledMacro" tag="G0B1" />
-						<button idMso="SortClear" imageMso="QueryDelete" label="Очистить фильтр" size="large" />
+						<button id="__AddFilter" imageMso="AdpStoredProcedureQueryAppendValues" label="Добавить фильтр" supertip="Добавить к параметрам фильтрации значение выделенной ячейки." onAction="SetFilter" size="large" getEnabled="GetEnabledMacro" tag="G0B1" />
+						<button id="__ClearFilter" imageMso="QueryDelete" label="Очистить фильтр" supertip="Очистка фильтра и состояния сортировки для текущего диапазона данных." onAction="SetFilter" size="large" getEnabled="GetEnabledMacro" tag="G1B2" />
 					</box>
 				</group>
 			</tab>
+			<tab idMso="TabData" getVisible="GetVisibleMenu" />
 		</tabs>
 	</ribbon>
 </customUI>
