@@ -1,4 +1,4 @@
-﻿Attribute VB_Name = "AutoModuleRibbon"
+Attribute VB_Name = "AutoModuleRibbon"
 Option Explicit
 Option Private Module ' rev.330
 '12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890

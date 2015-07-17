@@ -1,24 +1,38 @@
-﻿Attribute VB_Name = "Frame"
+Attribute VB_Name = "Frame"
 Option Explicit
 Option Base 1
+'Option Private Module ' rev.340
 '12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
 
 Private Counter As Integer ' Счётчик
 
-Public Property Get GetUserName() As String
+Property Get GetUserName() As String
   GetUserName = Environ("UserName")
+End Property
+
+Property Let Quit(ByVal xlBlock As Boolean) ' вместо End rev.340
+  With Application
+    If xlBlock Then
+      With UnprotectSheet(App_Wb.Sheets(GetSheetList(Set_spName)))
+        .Cells.Locked = True
+      End With: ProtectSheet App_Wb.Sheets(Sh_List(Set_spName))
+      .CellDragAndDrop = True: .MoveAfterReturnDirection = xlDown: End
+    Else
+      .CellDragAndDrop = False: .MoveAfterReturnDirection = xlToRight
+      ActiveWindow.Caption = ActiveWorkbook.Name & " (rev." & revFile & ")"
+    End If
+  End With
 End Property
 
 ' Загрузка данных с настройками
 Public Sub SettingsStatistics(ByRef Settings As Collection) ' rev.300
 Dim iND As Object, Bank As String, SubBank As String
-Const Set_cnfName = "CONF_" ' Внутреннее имя листа «Настройки»
 Const Let_accPath = "X:\Avtor_M\#Finansist\YCHET" ' Директория «YCHET» rev.330
   ' ВАЖНО! Обновление списка с Индексами листов
   If GetSheetList(Set_cnfName) < 1 Then ErrCollection 1001, 1, 16 ' EPN = 1
 '  Worksheets(Sh_List(Set_cnfName)).Visible = xlSheetVeryHidden ' СКРЫТЬ rev.330
   RemoveCollection Settings: Settings.Add "#1/1/2009#", "date0" ' для SQL
-  For Each iND In App_Wb.Sheets(Sh_List(Set_cnfName)).Names ' Из листа «Настройки»
+  For Each iND In App_Wb.Sheets(Sh_List(Set_cnfName)).NameS ' Из листа «Настройки»
     With iND
       Bank = Left(.Name, InStr(.Name, "_")): SubBank = Mid(.Name, Len(Bank) + 1)
       If Not .Value Like "*[#]*" Then
@@ -38,7 +52,8 @@ Dim App_Sh As Worksheet: RemoveCollection Sh_List
       Sh_List.Add App_Sh.Index, App_Sh.CodeName ' Добавляем индекс в список
       If App_Sh.CodeName = FindCodeNameSheet _
       Or App_Sh.Name = FindCodeNameSheet Then GetSheetList = App_Sh.Index
-    Next App_Sh: If Err Then ErrCollection Err.Number, 2, 16: End ' EPN = 2
+    Next App_Sh
+    If Err Then ErrCollection Err.Number, 2, 16: Quit = True ' EPN = 2
 End Function
 
 Public Sub ProtectSheet(ByRef Sh As Worksheet) ' Защитить лист
@@ -106,10 +121,12 @@ Dim Ask As Byte, Msg As String, Title As String:
     Case 20: Ask = 0: Msg = "У поставщика '" & Str & "' изменились основные " _
       & "данные. " & vbCrLf & "Перед сохранением необходимо изменить поле " _
       & "'Дата актуальности'. " & vbCrLf: Title = "Ошибка ввода данных "
-    Case 30: If Str Like "*''*" Then _
-      Ask = 5: Msg = "Не указан поставщик " & Right(Str, 13) & ". ": Icon = 48 _
-      Else: Msg = "Не найдены цены " & Str & ". " ' rev.330
-    Case 40: Ask = 4: Msg = "Не найдены цены " & Str & ". "
+    Case 30: Ask = 2: Msg = "Внимание! Обновился файл с ценами. ": Title = _
+      "Требуется обновление "
+    ' В данной версии нет предупреждения «Дата поступления» с пустым поставщиком
+    Case 40: If Str Like "*''*" Then _
+      Ask = 5: Msg = "Не указан поставщик " & Mid(Str, 19) & ". ": Icon = 64 _
+      Else: Ask = 4: Msg = "Не найдены цены " & Str & ". " ' rev.340
     Case 57: Msg = "В настройках " & Str & " обнаружена битая ссылка. "
     Case 59: Msg = "Файл '" & Str & "' не найден! " _
       & "Работа с данными невозможна!": Title = "Ошибка открытия файла "
@@ -143,5 +160,5 @@ Dim Ask As Byte, Msg As String, Title As String:
     Case 5: Msg = Msg & vbCrLf & "Выберите поставщика " _
       & "или удалите 'Дату поступления в ОКМ'. "
   End Select: MsgBox Msg, Icon, Title & IIf(ErrNumber > 0, ErrPartNum & "x", _
-    "ADODB ") & ErrNumber: If Ask = 3 Then End
+    "ADODB ") & ErrNumber: If Ask = 3 Then Quit = True
 End Sub

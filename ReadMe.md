@@ -21,7 +21,7 @@
 
 3. Выполнить в Git Bash комманды
 	```bash
-	$ git config --global filter.win1251.clear "iconv -f windows-1251 -t utf-8"
+	$ git config --global filter.win1251.clean "iconv -f windows-1251 -t utf-8"
 	$ git config --global filter.win1251.smudge "iconv -f utf-8 -t windows-1251"
 	$ git config --global filter.win1251.required true
 	```
@@ -30,4 +30,4 @@
 
 ### Возможные проблемы при использовании фильтра в Git Client
 
-После обновления Git Client при выполнении любой команды, например `git status`, может возникнуть ошибка **fatal: ... filter clear**. Для устранения необходимо отключить фильтры, произвести повторное клонирование репозитория, изменить вручную кодировки у файлов, затем восстановить фильтры.
+После обновления Git Client при выполнении любой команды, например `git status`, может возникнуть ошибка **fatal: [*file*] clean filter 'win1251' faile**. Для устранения необходимо удалить фильтры, установить фильтры и произвести повторное клонирование репозитория.
