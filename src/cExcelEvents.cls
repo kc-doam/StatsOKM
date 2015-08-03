@@ -147,6 +147,19 @@ ByVal Target As Range, Cancel As Boolean)
   End If
 End Sub
 
+Private Sub App_SheetChange(ByVal Sh As Object, ByVal Target As Range)
+  If Target.Worksheet.CodeName = Sh.CodeName Then ' Если лист тот же
+    If Sh.CodeName Like "[OQS]?_" And Target.Row > 1 Then
+      ' 18/04/2014 Автопростановка "Разрешено включать" по оперативному договору
+      If Not IsEmpty(Sh.Cells(Target.Row, 8)) And Target.Column = 19 Then
+        If Sh.Cells(Target.Row, Target.Column) = "опер." Then _
+          Sh.Cells(Target.Row, 20) = Sh.Cells(Target.Row, 12) _
+        Else Sh.Cells(Target.Row, 20).ClearContents
+      End If
+    End If
+  End If
+End Sub
+
 Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
 Dim cell As Range ' Не работает при выборе из списка
   If Count < 0 Then Sh.Rows(Abs(Count)).Locked = True: Count = 0 ' Защита ячеек
@@ -172,7 +185,7 @@ Dim cell As Range ' Не работает при выборе из списка
   End If
   
   If Sh.CodeName Like "[OQS]?_" And Target.Row > 1 Then
-    If (Target.Column = 5 Or Target.Column = 19) _
+    If (Target.Column = 5 Or Target.Column = 19 Or Target.Column = 48) _
     And Not IsEmpty(Sh.Cells(Target.Row - 1, 5)) Then
       ' And IsEmpty(Sh.Cells(Target.Row, 5)) ' ОШИБКА! В прошлых записях нет списка rev.330
       UnprotectSheet Sh ' Форма договора rev.310
@@ -190,6 +203,14 @@ Dim cell As Range ' Не работает при выборе из списка
         .ErrorMessage = "Необходимо выбрать значение из списка "
         .IgnoreBlank = True: .InCellDropdown = True
         .Parent.Locked = False
+      End With
+      With Sh.Cells(Target.Row, 48).Validation ' rev.350
+        .Delete: .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
+          Formula1:=Replace(Let_UrgencyTransList, "$", "Срочно ")
+        .ErrorTitle = "Срочно"
+        .ErrorMessage = "Необходимо выбрать значение из списка "
+        .IgnoreBlank = True: .InCellDropdown = True
+        .Parent.Locked = False
       End With: ProtectSheet Sh ' rev.330
     End If
     If (Target.Column = 6 Or Target.Column = 7) And PartNumRow > 1 Then
@@ -199,26 +220,7 @@ Dim cell As Range ' Не работает при выборе из списка
         GetSuppRow Sh, .Row ' Поиск строки SuppNumRow у поставщика
         If Not IsEmpty(Sh.Cells(.Row, 5)) _
         Or Not IsEmpty(Sh.Cells(.Row, .Column - 1)) Then ' rev.340 And SuppNumRow > 0
-          Sh.Cells(.Row, 1).FormulaR1C1 = "=TEXT(R" & .Row & "C6,""ММММ.ГГ"")"
-          Sh.Cells(.Row, 2).NumberFormat = "General" ' rev.340
-          Sh.Cells(.Row, 2).FormulaR1C1 = "='" & cnfRenew & "'!R" & SuppNumRow & "C4"
-          Sh.Cells(.Row, 2).NumberFormat = "@"
-          Sh.Cells(.Row, 3).FormulaR1C1 = "='" & cnfRenew & "'!R" & SuppNumRow & "C5"
-          Sh.Cells(.Row, 4).FormulaR1C1 = "='" & cnfRenew & "'!R" & SuppNumRow & "C8"
-          Sh.Cells(.Row, 6).NumberFormat = "m/d/yyyy"
-          ' ЦЕНЫ КФ
-          Sh.Cells(.Row, 28).FormulaR1C1 = "=SUM(R" & .Row & "C25:R" & .Row & "C27)"
-          Sh.Cells(.Row, 32).FormulaR1C1 = "=SUM(R" & .Row & "C29:R" & .Row & "C31)"
-          ' НУМ Sh.Cells(.Row, 42).FormulaR1C1 = "=SUM(R" & .Row & "C38:R" & .Row & "C41)"
-          Sh.Cells(.Row, 44).FormulaR1C1 = GetCosts(Sh, .Row)
-          Sh.Cells(.Row, 46).FormulaR1C1 = "=IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""НДС"",(R" & .Row & "C44+R" & .Row & "C45)*0.18,IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""УСН"",""без НДС"",""""))"
-          Sh.Cells(.Row, 47).FormulaR1C1 = "=SUM(R" & .Row & "C44:R" & .Row & "C46)"
-          ' ЦЕНЫ БО
-          'Sh.Cells(.Row, 57).FormulaR1C1 = "=SUM(R" & .Row & "C53:R" & .Row & "C56)"
-          'Sh.Cells(.Row, 70).FormulaR1C1 = GetCosts(Sh, .Row)
-          'Sh.Cells(.Row, 71).FormulaR1C1 = "=IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""НДС"",R" & .Row & "C70*0.18,IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""УСН"",""без НДС"",""""))"
-          'Sh.Cells(.Row, 73).FormulaR1C1 = "=SUM(R" & .Row & "C70:R" & .Row & "C72)"
-          'Sh.Cells(.Row, 74).FormulaR1C1 = "=R" & .Row & "C64+R" & .Row & "C73"
+          SetFormula Sh, .Row ' Создание формул для записи rev.350
         Else
           For Each cell In Sh.Range(Sh.Cells(.Row, 1), Sh.Cells(.Row, 74))
             If cell.HasFormula Then cell = ""

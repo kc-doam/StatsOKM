@@ -147,6 +147,9 @@ Dim Ask As Byte, Msg As String, Title As String:
     Case 273: Msg = "Невозможно применить сортировку к пустому фильтру " _
       & "на листе '" & Str & "'. "
     Case 3012: Msg = "Невозможно применить автофильтр на листе '" & Str & "'. "
+    Case 3018: Msg = "Невозможно создать условное форматирование. Ошибка " _
+      & "в формуле, либо лист '" & Str & "' защищён от записи. " _
+      & vbCrLf: Title = "Ошибка ввода данных "
     ' not EPN
     Case Else: Msg = "Неизвестная ошибка #" & ErrNumber & " ": Icon = 16
   End Select: Select Case Ask
