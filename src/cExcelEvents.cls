@@ -84,7 +84,7 @@ Private Sub App_SheetDeactivate(ByVal Sh As Object) ' #S Серый лист
     Sh.Rows(Abs(Count)).Locked = True: Count = 0 ' Защита ячеек
   If Sh.CodeName = Set_arName Then
     On Error Resume Next
-      App.ScreenUpdating = False: SortSupplier Sh, 10, 11
+      App.ScreenUpdating = False: SortSupplier Sh, 10, 15 ' rev.360
       Sh.Visible = xlSheetHidden: App.ScreenUpdating = True ' СКРЫТЬ
       If Err Then ErrCollection Err.Number, 3, 16, Sh.Name: Exit Sub ' EPN = 3
     On Error GoTo 0
@@ -139,10 +139,10 @@ ByVal Target As Range, Cancel As Boolean)
       Count = -1 * Target.Row
       ' Если «Разрешено включать» = Пусто, то разблокировать строку
       If (Sh.CodeName = Set_spName And (IsEmpty(Sh.Cells(Target.Row, 10)) _
-        Or IsEmpty(Sh.Cells(Target.Row, 11)))) _
+        Or IsEmpty(Sh.Cells(Target.Row, 15)))) _
       Or (Sh.CodeName = "SF_" And IsEmpty(Sh.Cells(Target.Row, 18))) _
       Or (Sh.CodeName = "SB_" And IsEmpty(Sh.Cells(Target.Row, 18))) Then _
-        Sh.Rows(Target.Row).Locked = False ' Снять защиту ячеек
+        Sh.Rows(Target.Row).Locked = False ' Снять защиту ячеек rev.360
     End If
   End If
 End Sub
@@ -156,6 +156,17 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal Target As Range)
           Sh.Cells(Target.Row, 20) = Sh.Cells(Target.Row, 12) _
         Else Sh.Cells(Target.Row, 20).ClearContents
       End If
+      ' 08/12/2014 Удаление всех символов, кроме цифр
+      If Target.Column > 24 And Target.Column < 44 Then
+        If Not IsArray(Target) And Not Target.HasFormula Then ' Если не массив
+          Count = Replace(Val(Target.Value), "-", "")
+          If Not Target = Count Then Target = Count
+        End If
+      End If
+      If App.CountA(Sh.Range(Sh.Cells(Target.Row, 29), _
+        Sh.Cells(Target.Row, 31))) > 2 And Sh.Cells(Target.Row, 32) < 1 Then _
+        If IsEmpty(Sh.Cells(Target.Row, 24)) Then Sh.Cells(Target.Row, 24) = _
+        "не оплач." ' Автопростановка "не оплач." rev.360
     End If
   End If
 End Sub
@@ -163,7 +174,7 @@ End Sub
 Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
 Dim cell As Range ' Не работает при выборе из списка
   If Count < 0 Then Sh.Rows(Abs(Count)).Locked = True: Count = 0 ' Защита ячеек
-  If Sh.CodeName = Set_spName And Target.Column = 11 Then Exit Sub
+  If Sh.CodeName = Set_spName And Target.Column = 15 Then Exit Sub ' rev.360
   
   'Application.ScreenUpdating = False ' ВЫКЛ Обновление экрана
   If Sh.CodeName = Set_spName And SuppNumRow <> Target.Row Then
@@ -173,7 +184,7 @@ Dim cell As Range ' Не работает при выборе из списка
     App_SheetActivate Sh ' Костыль
   End If
   If Sh.CodeName = Set_spName And Target.Row > 1 Then
-    If Target.Column = 12 And Not IsEmpty(Sh.Cells(Target.Row, 10)) Then
+    If Target.Column = 11 And Not IsEmpty(Sh.Cells(Target.Row, 10)) Then ' rev.360
       UnprotectSheet Sh
       ListCost Sh, Target.Row
       ProtectSheet Sh

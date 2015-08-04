@@ -19,7 +19,8 @@ Property Let Quit(ByVal xlBlock As Boolean) ' вместо End rev.340
       .CellDragAndDrop = True: .MoveAfterReturnDirection = xlDown: End
     Else
       .CellDragAndDrop = False: .MoveAfterReturnDirection = xlToRight
-      ActiveWindow.Caption = ActiveWorkbook.Name & " (rev." & revFile & ")"
+      ActiveWindow.Caption = ActiveWorkbook.Name & " (rev." & revFile & ")" _
+        & IIf(ActiveWorkbook.ReadOnly, "  [Только для чтения]", "") ' rev.360
     End If
   End With
 End Property
@@ -144,11 +145,13 @@ Dim Ask As Byte, Msg As String, Title As String:
       & "к специалисту по автоматизации. ": Title = "Внутренняя ошибка "
     Case 2008: Ask = 3: Msg = "На листе '" & Str & "' задан неизвестный пароль. "
     ' EPN = 3
+    Case 21: Msg = "Ошибка в формуле условного форматирования на листе '" _
+      & Str & "'. ": Title = "Ошибка ввода данных " ' rev.360
     Case 273: Msg = "Невозможно применить сортировку к пустому фильтру " _
       & "на листе '" & Str & "'. "
     Case 3012: Msg = "Невозможно применить автофильтр на листе '" & Str & "'. "
     Case 3018: Msg = "Невозможно создать условное форматирование. Ошибка " _
-      & "в формуле, либо лист '" & Str & "' защищён от записи. " _
+      & "в связанных диапазонах, либо лист '" & Str & "' защищён от записи. " _
       & vbCrLf: Title = "Ошибка ввода данных "
     ' not EPN
     Case Else: Msg = "Неизвестная ошибка #" & ErrNumber & " ": Icon = 16

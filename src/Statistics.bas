@@ -2,7 +2,7 @@ Attribute VB_Name = "Statistics"
 Option Explicit
 Option Base 1
 '12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
-Public Const Let_SuppList = "Список_Поставщиков", revFile As Integer = 350
+Public Const Let_SuppList = "Список_Поставщиков", revFile As Integer = 360
 ' Внутреннее имя листа «Настройки», Внутреннее имя листа «Архив» и «Поставщики»
 Public Const Set_cnfName = "CONF_", Set_arName = "ARCH_", Set_spName = "SUPP_"
 Public Const Let_UrgencyTransList = "$Новое,$Наши вопросы,$Доработка,$Иное"
@@ -175,7 +175,7 @@ Dim Arr As Variant
       Arr(1, 32) = "=SUM(R" & TargetRow & "C29:R" & TargetRow & "C31)"
       ' НУМ Arr(1, 42) = "=SUM(R" & TargetRow & "C38:R" & TargetRow & "C41)"
       Arr(1, 44) = GetCosts(Sh, TargetRow)
-      Arr(1, 46) = "=IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""НДС"",(R" & TargetRow & "C44+R" & TargetRow & "C45)*0.18,IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""УСН"",""без НДС"",""""))"
+      Arr(1, 46) = "=IF('" & cnfRenew & "'!R" & SuppNumRow & "C12=""НДС"",(R" & TargetRow & "C44+R" & TargetRow & "C45)*0.18,IF('" & cnfRenew & "'!R" & SuppNumRow & "C12=""УСН"",""без НДС"",""""))" ' rev.360
       Arr(1, 47) = "=SUM(R" & TargetRow & "C44:R" & TargetRow & "C46)"
       ' ЦЕНЫ БО
       'Sh.Cells(TargetRow, 57).FormulaR1C1 = "=SUM(R" & TargetRow & "C53:R" & TargetRow & "C56)"
@@ -226,11 +226,11 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
             .Columns("C:I").Columns.Group: .Columns("F:G").Columns.Group
             If .CodeName = Set_spName Then
               .Columns("A:AB").Locked = False: .Rows("1:1").Locked = True
-              .Columns("N:X").Columns.Group
+              .Columns("M:X").Columns.Group ' rev.360
             End If
             ' Форматирование колонок
             .Columns("D:D").NumberFormat = "@"
-            .Columns("K:K").NumberFormat = "m/d/yyyy"
+            .Columns("O:O").NumberFormat = "m/d/yyyy"
             If .CodeName = Set_spName Then
               .Range("A1:AB1").WrapText = True ' rev.340
               .Columns("Q:Q").NumberFormat = "m/d/yyyy"
@@ -241,84 +241,87 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
               .Columns("X:X").NumberFormat = "[$-419]000000000;@"
               .Columns("AA:AA").NumberFormat = "@"
             End If
+            ' Границы таблицы rev.360
+            With .Range("N:N,O:O").Borders(xlEdgeRight)
+              .LineStyle = xlContinuous: .Weight = xlThin
+            End With
             ' Сортировка
-            SortSupplier App_Sh, 10, 11
+            SortSupplier App_Sh, 10, 15 ' rev.360
             PreError = PreError + 1
             ' Условное форматирование
             If Val(Application.Version) >= 12 Then
-              With .Range("A2:A55,D2:E55,L2:M55").FormatConditions _
-                .Add(Type:=xlBlanksCondition)
+              With .Range("A2:A" & LastRow & ",D2:E" & LastRow & ",K2:L" & LastRow).FormatConditions _
+                .Add(Type:=xlBlanksCondition) ' rev.360
                 .Interior.ColorIndex = 3: .StopIfTrue = True
               End With
-              With .Range("D2:D55").FormatConditions _
+              With .Range("D2:D" & LastRow).FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=И($E2=""РИЦ"";$D2>""999"")")
                 .Interior.ColorIndex = 3: .StopIfTrue = True ' rev.350
               End With
-              With .Range("C2:C55").FormatConditions _
+              With .Range("C2:C" & LastRow).FormatConditions _
                 .Add(Type:=xlBlanksCondition)
                 .Interior.ColorIndex = 44: .StopIfTrue = True
               End With
               ' Поставщик (кратко)
-              With .Range("J2:K55").FormatConditions _
+              With .Range("J2:J" & LastRow & ",O2:O" & LastRow).FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=И(НЕ(ЕПУСТО($J2));" _
-                  & "ИЛИ(ЕПУСТО($A2);ЕПУСТО($L2);ЕПУСТО($M2)))")
+                  & "ИЛИ(ЕПУСТО($A2);ЕПУСТО($K2);ЕПУСТО($L2)))") ' rev.360
                 .Font.ColorIndex = 2: .Interior.ColorIndex = 9
                 .StopIfTrue = True: .SetFirstPriority
               End With
               If .CodeName = Set_spName Then
-                ' ИНН был перемещён ниже, а J55 сделать + 1
-                With .Range("J2:J55").FormatConditions _
+                With .Range("J2:J" & LastRow + 1).FormatConditions _
                   .Add(Type:=xlExpression, Formula1:="=И(НЕ(ЕПУСТО(СМЕЩ($J2;-1;" _
-                    & "0)));ЕПУСТО($J2))")
-                  .Interior.ColorIndex = 36: .StopIfTrue = True
+                    & "0)));ЕПУСТО($J2))") ' rev.360
+                  .Interior.ColorIndex = 44: .StopIfTrue = True
                 End With
                 ' ИНН
-                With .Range("W2:W55").FormatConditions _
+                With .Range("W2:W" & LastRow).FormatConditions _
                   .Add(Type:=xlExpression, Formula1:="=ИЛИ(ЕСЛИ(НЕ(ЕЧИСЛО($W2));" _
                     & "1;ЦЕЛОЕ($W2)<>$W2);ИЛИ(И($A2=""Ф/Л"";ДЛСТР($W2)<11));" _
                     & "И($A2=""Ю/Л"";ДЛСТР($W2)>10))")
                   .Interior.ColorIndex = 44: .StopIfTrue = True
                 End With
-                .Range("O2:AB55").FormatConditions.Add Type:=xlNoBlanksCondition
-                With .Range("O2:O55,U2:U55,Z2:Z55").FormatConditions _
-                  .Add(Type:=xlBlanksCondition)
+                .Range("N2:AB" & LastRow).FormatConditions.Add Type:=xlNoBlanksCondition  ' rev.360
+                With .Range("N2:N" & LastRow & ",U2:U" & LastRow & ",Z2:Z" & LastRow).FormatConditions _
+                  .Add(Type:=xlBlanksCondition) ' rev.360
                   .Interior.ColorIndex = 36: .StopIfTrue = True
                 End With
-                With .Range("Q2:Q55,T2:T55,V2:V55").FormatConditions _
+                With .Range("Q2:Q" & LastRow & ",T2:T" & LastRow & ",V2:V" & LastRow).FormatConditions _
                   .Add(Type:=xlExpression, Formula1:="=$A2=""Ф/Л""")
                   .Interior.ColorIndex = 36: .StopIfTrue = True
                 End With
-                With .Range("N2:N55,P2:P55,X2:X55").FormatConditions _
-                  .Add(Type:=xlExpression, Formula1:="=$A2=""Ю/Л""")
+                With .Range("M2:M" & LastRow & ",P2:P" & LastRow & ",X2:X" & LastRow).FormatConditions _
+                  .Add(Type:=xlExpression, Formula1:="=$A2=""Ю/Л""") ' rev.360
                   .Interior.ColorIndex = 36: .StopIfTrue = True
                 End With
               End If
               If .CodeName = Set_arName Then
-                With .Range("A2:O55").FormatConditions _
+                With .Range("A2:O" & LastRow).FormatConditions _
                   .Add(Type:=xlExpression, _
-                    Formula1:="=ЕПУСТО($J2)+МАКС(--($J2:$J9=$J2)*$K2:$K9)=$K2")
+                    Formula1:="=ЕПУСТО($J2)+МАКС(--($J2:$J9=$J2)*$O2:$O9)=$O2") ' rev.360
                   .Interior.ColorIndex = 43: .StopIfTrue = True
                   '.SetFirstPriority
                 End With
-                With .Range("A2:O55").FormatConditions _
+                With .Range("A2:O" & LastRow).FormatConditions _
                   .Add(Type:=xlExpression, _
-                    Formula1:="=И($K2>СЕГОДНЯ()-90;НЕ(ЕПУСТО($J2)))")
+                    Formula1:="=И($O2>СЕГОДНЯ()-90;НЕ(ЕПУСТО($J2)))") ' rev.360
                   .Interior.ColorIndex = 27: .StopIfTrue = True
                   '.SetFirstPriority
                 End With
               End If
             End If
-            PreError = PreError + 1
+            PreError = PreError + 1: LastRow = LastRow + 9
             ' Проверка ввода данных
             If .CodeName = Set_spName Then
-              With .Range("A2:A55").Validation
+              With .Range("A2:A" & LastRow).Validation
                 .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
                   Formula1:=Let_OrgBodyList
                 .ErrorTitle = "Вид лица"
                 .ErrorMessage = "Необходимо выбрать значение из списка "
                 .ShowError = True: .IgnoreBlank = True
               End With
-              With .Range("D2:D55").Validation
+              With .Range("D2:D" & LastRow).Validation
                 .Add Type:=xlValidateCustom, AlertStyle:=xlValidAlertStop, _
                   Formula1:="=OR(AND($D2>=""001"",$D2<=""999"",LEN($D2)<4)," _
                   & "$D2=""станд."",$D2=""ДПР"")"
@@ -327,15 +330,15 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                   & "либо указать источник ""ДПР"" или ""станд."""
                 .ShowError = True: .IgnoreBlank = True
               End With
-              With .Range("E2:E55").Validation
+              With .Range("E2:E" & LastRow).Validation
                 .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-                  Formula1:="Коммерч.,Некоммерч.,Ведомство,РИЦ," _
-                  & "Собств. источники КЦ"
+                  Formula1:="Коммерч.,Некоммерч.,Ведомство," _
+                  & "Ведомство (без подп.),РИЦ,Собств. источники КЦ" ' rev.360
                 .ErrorTitle = "Тип организации"
                 .ErrorMessage = "Необходимо выбрать значение из списка "
                 .ShowError = True: .IgnoreBlank = True
               End With
-              With .Range("K2:K55").Validation
+              With .Range("O2:O" & LastRow).Validation ' rev.360
                 .Add Type:=xlValidateDate, AlertStyle:=xlValidAlertStop, _
                   Operator:=xlGreaterEqual, Formula1:=Replace( _
                   Settings("date0"), "#", "")
@@ -343,13 +346,13 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                 .ErrorMessage = "Необходимо ввести дату не раньше " & .Formula1
                 .ShowError = True: .IgnoreBlank = True
               End With
-              With .Range("M2:M55").Validation
+              With .Range("L2:L" & LastRow).Validation ' rev.360
                 .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
                   Formula1:="НДС,УСН"
                 .ErrorTitle = "НДС / УСН"
                 .ErrorMessage = "Необходимо выбрать значение из списка "
               End With
-              With .Range("Q2:Q55").Validation
+              With .Range("Q2:Q" & LastRow).Validation
                 .Add Type:=xlValidateDate, AlertStyle:=xlValidAlertStop, _
                   Operator:=xlGreaterEqual, Formula1:=DateAdd( _
                   "m", -840, Replace(Settings("date0"), "#", ""))
@@ -357,7 +360,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                 .ErrorMessage = "Необходимо ввести дату не раньше " & .Formula1
                 .ShowError = True: .IgnoreBlank = True
               End With
-              With .Range("R2:R55").Validation
+              With .Range("R2:R" & LastRow).Validation
                 .Add Type:=xlValidateWholeNumber, AlertStyle:=xlValidAlertStop, _
                   Operator:=xlGreaterEqual, Formula1:=DatePart( _
                   "yyyy", Replace(Settings("date0"), "#", ""))
@@ -365,7 +368,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                 .ErrorMessage = "Необходимо ввести год не меньше " & .Formula1
                 .ShowError = True: .IgnoreBlank = True
               End With
-              With .Range("V2:V55").Validation
+              With .Range("V2:V" & LastRow).Validation
                 .Add Type:=xlValidateWholeNumber, AlertStyle:=xlValidAlertStop, _
                   Operator:=xlBetween, Formula1:="100000000", _
                   Formula2:="99999999999"
@@ -374,7 +377,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                   & "содержать от 9 до 11 цифр "
                 .ShowError = True: .IgnoreBlank = True
               End With
-              With .Range("W2:W55").Validation ' ИНН
+              With .Range("W2:W" & LastRow).Validation ' ИНН
                 .Add Type:=xlValidateCustom, AlertStyle:=xlValidAlertStop, _
                   Formula1:="=AND(OR(AND($A2=""Ф/Л"",LEN($W2)<13)," _
                   & "AND($A2=""Ю/Л"",LEN($W2)<11)),LEN($W2)>8)"
@@ -384,7 +387,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                   & "до 12 цифр" & vbCrLf & vbTab & "для Ю/Л  от 9 до 10 цифр"
                 .ShowError = True: .IgnoreBlank = True
               End With
-              With .Range("X2:X55").Validation
+              With .Range("X2:X" & LastRow).Validation
                 .Add Type:=xlValidateWholeNumber, AlertStyle:=xlValidAlertStop, _
                   Operator:=xlBetween, Formula1:="10000000", Formula2:="999999999"
                 .ErrorTitle = "КПП"
@@ -429,7 +432,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
               .HorizontalAlignment = xlGeneral
             End With: .Range("P:P,R:R,S:S").NumberFormat = "@" ' rev.350
             ' Границы таблицы rev.350
-            With .Range("D:D,N:N,AA:AA,AE:AE,AI:AI,AK:AK,AP:AP") _
+            With .Range("D:D,AA:AA,AE:AE,AI:AI,AK:AK,AP:AP") _
               .Borders(xlEdgeRight)
               .LineStyle = xlContinuous: .Weight = xlThin
             End With
@@ -449,34 +452,32 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                 .StopIfTrue = True: .SetFirstPriority
               End With
               With .Range("F2:O" & LastRow & ",Q2:Q" & LastRow & ",T2:X" & LastRow).FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И(ИЛИ(F2<" & Replace( _
-                  Settings("date0"), "#", "") & ";F2>СЕГОДНЯ());F2<>"""";F2<>""не оплач."")")
+                .Add(Type:=xlExpression, Formula1:="=И(ИЛИ(F2<ДАТАЗНАЧ(""" & Replace( _
+                  Settings("date0"), "#", "") & """);F2>СЕГОДНЯ());F2<>"""";F2<>""не оплач."")") ' rev.360
                 .Interior.ColorIndex = 3: .StopIfTrue = True
               End With
               With .Range("F2:G" & LastRow).FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=СЧЁТЕСЛИМН($E2:$E" & LastRow & ";$E2;$F2:$F" & LastRow & ";$F2;$G2:$G" & LastRow & ";$G2)>1")
-                .Interior.ColorIndex = 3: .StopIfTrue = True
+                .Add(Type:=xlExpression, Formula1:="=СЧЁТЕСЛИМН($E$2:$E" & LastRow & ";$E2;$F$2:$F" & LastRow & ";$F2;$G$2:$G" & LastRow & ";$G2)>1")
+                .Interior.ColorIndex = 3: .StopIfTrue = True ' rev.360
               End With
               With .Range("G2:G" & LastRow).FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=СЧЁТЕСЛИМН($E2:$E" & LastRow & ";$E2;$G2:$G" & LastRow & ";$G2)>1")
-                .Interior.ColorIndex = 45: .StopIfTrue = True
+                .Add(Type:=xlExpression, Formula1:="=СЧЁТЕСЛИМН($E$2:$E" & LastRow & ";$E2;$G$2:$G" & LastRow & ";$G2)>1")
+                .Interior.ColorIndex = 45: .StopIfTrue = True ' rev.360
               End With
               
-              With .Range("K:N,X:X").FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=$X1=""не оплач.""")
+              ' ВЫБОР(ПОИСКПОЗ(СТОЛБЕЦ();$BA$1:$BC$1;0);30;9;14) = ЕСЛИОШИБКА(ВЫБОР(ПОИСКПОЗ(ИНДЕКС($1:$1;1;СТОЛБЕЦ());K1:L1;0);30;9);14)
+              With .Range("K:L,V:V").FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И(J1<СЕГОДНЯ()-ЕСЛИОШИБКА(ВЫБОР(ПОИСКПОЗ(ИНДЕКС($1:$1;1;СТОЛБЕЦ());K1:L1;0);30;9);14);J1<>"""";K1="""")")
+                .Interior.ColorIndex = 38: .StopIfTrue = True ' rev.360
+              End With
+              ' Согласование было перемещено выше rev.360
+              With .Range("M:N").FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И(L1>0;M1="""")")
+                .Interior.ColorIndex = 38: .StopIfTrue = True
+              End With
+              With .Range("K:X").FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=$X1=""не оплач.""") ' rev.360
                 .Interior.ColorIndex = 48: .StopIfTrue = True
-              End With
-              With .Range("K:K").FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И($J1<СЕГОДНЯ()-30;$J1<>"""";$K1="""")")
-                .Interior.ColorIndex = 38: .StopIfTrue = True
-              End With
-              With .Range("L:L").FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И($K1<СЕГОДНЯ()-9;$K1<>"""";$L1="""")")
-                .Interior.ColorIndex = 38: .StopIfTrue = True
-              End With
-              With .Range("V:V").FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И($U1<СЕГОДНЯ()-14;$U1<>"""";$V1="""")")
-                .Interior.ColorIndex = 38: .StopIfTrue = True
               End With
               With .Range("O:T").FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=$X1<>""""")
@@ -487,44 +488,66 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                 .Interior.ColorIndex = 43: .StopIfTrue = True
               End With
               With .Range("O:T").FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И(СЧЁТЗ($O1:$T1)>0;$N1="""")")
+                .Interior.ColorIndex = 3: .StopIfTrue = True ' rev.360
+              End With
+              With .Range("O:T").FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=$L1<>""""")
                 .Interior.ColorIndex = 44: .StopIfTrue = True
               End With
-              
-              With .Range("Y:AA").FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И(ДЛСТР(СЦЕПИТЬ($Y1;$Z1;$AA1))<1;СУММ($Y1:$AA1)<>$AB1)")
-                .Interior.ColorIndex = 44: .StopIfTrue = True
+              With .Range("Y:AQ").FormatConditions _
+                .Add(Type:=xlCellValue, Operator:=xlLess, Formula1:="=0")
+                .Interior.ColorIndex = 3: .StopIfTrue = True ' rev.360
               End With
               With .Range("Y2:AB" & LastRow).FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И(СУММ($Y2:$AA2)<>$AB2;$AF2>0)")
-                .Interior.ColorIndex = 3: .StopIfTrue = True
+                .Add(Type:=xlExpression, Formula1:="=И(СЧЁТЗ($Y2:$AA2)>2;СУММ($Y2:$AA2)<>$AB2)")
+                .Interior.ColorIndex = 3: .StopIfTrue = True ' rev.360
+              End With
+              With .Range("Y2:AA" & LastRow).FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И(ИЛИ(СЧЁТЗ($Y2:$AA2)<3;СУММ($Y2:$AA2)<>$AB2);$AB2>0)")
+                .Interior.ColorIndex = 44: .StopIfTrue = True ' rev.360
+              End With
+              With .Range("AC2:AF" & LastRow).FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=ИЛИ(И(СЧЁТЗ($AC2:$AE2)>2;СУММ($AC2:$AE2)<>$AF2);$AF2>$AB2)")
+                .Interior.ColorIndex = 3: .StopIfTrue = True ' rev.360
+              End With
+              With .Range("AC2:AE" & LastRow).FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И(СЧЁТЗ($AC2:$AE2)<3;СЧЁТЗ($Y2:$AA2)>2)")
+                .Interior.ColorIndex = 44: .StopIfTrue = True ' rev.360
               End With
               With .Range("AL2:AP" & LastRow).FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=СУММ($AL2:$AO2)<>$AP2")
                 .Interior.ColorIndex = 3: .StopIfTrue = True
               End With
               With .Range("AG2:AK" & LastRow & ",AQ2:AR" & LastRow).FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=ИЛИ(СУММ($AG2:$AK2)<>ЕСЛИ($AQ2>0;0;СУММ(ЕСЛИ(ЕЧИСЛО(ПОИСК(""вопр"";$AV2));$AJ2:$AK2;$AG2:$AI2)));$AF2<>ЕСЛИ($AQ2>0;$AQ2;СУММ($AG2:$AK2)))")
+                .Add(Type:=xlExpression, Formula1:="=ИЛИ(СУММ($AG2:$AK2)<>ЕСЛИ($AQ2>0;0;СУММ(ЕСЛИ(ЕЧИСЛО(ПОИСК(""вопр"";$AV2));$AJ2:$AK2;$AG2:$AI2)));ЕСЛИ($AQ2>0;$AF2<>$AQ2;И(СЧЁТЗ($AC2:$AE2)>2;$AF2<>СУММ($AG2:$AK2))))") ' rev.360
                 .Interior.ColorIndex = 3: .StopIfTrue = True
               End With
-              With .Range("M:M").FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И($L1>0;$M1="""")")
-                .Interior.ColorIndex = 38: .StopIfTrue = True
-              End With
-              'With .Range("O:T").FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И($M1>0;$Q1>0;$N1="""")")
-              '  .Interior.ColorIndex = 38: .StopIfTrue = True
-              'End With
               
-              ' Срочно Наши вопросы
-              With .Range("E:N,X:AF,AJ:AK,AR:AW").FormatConditions _
+              ' Срочно Наши вопросы rev.360
+              With .Range("E:F,AJ:AK").FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=$AV1=""Срочно Наши вопросы""")
                 .Interior.ColorIndex = 37: .StopIfTrue = False
               End With
             End If
             PreError = PreError + 1
             ' Проверка ввода данных
-            
+            With .Range("F2:F" & LastRow).Validation ' rev.360
+              .Add Type:=xlValidateDate, AlertStyle:=xlValidAlertStop, _
+                Operator:=xlGreaterEqual, Formula1:=Replace( _
+                Settings("date0"), "#", "")
+              .ErrorTitle = "Дата поступления в ДОАМ"
+              .ErrorMessage = "Необходимо ввести дату не раньше " & .Formula1
+              .ShowError = True: .IgnoreBlank = True
+            End With
+            With .Range("X2:X" & LastRow).Validation
+              .Add Type:=xlValidateCustom, AlertStyle:=xlValidAlertStop, _
+                Formula1:="=OR($X2=""не оплач."",AND($X2>$F2,ISNUMBER($X2)))"
+              .ErrorTitle = "Дата перечислений"
+              .ErrorMessage = "Необходимо ввести дату больше " _
+                & """Даты поступления в ДОАМ"""
+              .ShowError = True: .IgnoreBlank = True
+            End With
             'With
             '  .NumberFormat = "#,##0"
             '  .HorizontalAlignment = xlRight
@@ -563,16 +586,16 @@ Dim i As Integer: Counter = 0: i = 2
           Do Until IsEmpty(.Cells(i, 10)) ' Счётчик строк ' Выполнять ДО
             ' Поставщик без «Даты актуальности» не добавляется
             If .Cells(i, 10) = SuppDiff(10) _
-            And .Cells(i, 11) = CDate(SuppDiff(11)) Then Counter = i
+            And .Cells(i, 15) = CDate(SuppDiff(15)) Then Counter = i ' rev.360
             i = i + 1
             If Err Then ErrCollection Err.Number, 1, 16: Quit = True ' EPN = 1
             'Debug.Print "RecordCells Err #" & Err.Number: If Err Then Exit Sub
           Loop: If Counter <> 0 Then i = Counter
           
           .Cells(i, 1).Resize(, UBound(SuppDiff)) = SuppDiff
-          If IsDate(SuppDiff(11)) Then .Cells(i, 11) = CDate(SuppDiff(11))
+          If IsDate(SuppDiff(15)) Then .Cells(i, 15) = CDate(SuppDiff(15)) ' rev.360
           
-          SortSupplier App_Wb.Sheets(Sh_List(Set_arName)), 10, 11
+          SortSupplier App_Wb.Sheets(Sh_List(Set_arName)), 10, 15 ' rev.360
           CostUpdate SuppDiff(10) ' rev.340
           
           If Err Then ErrCollection Err.Number, 3, 16, .Name ' EPN = 3
@@ -592,23 +615,23 @@ Public Function CheckSupplier() As Boolean
         & .Cells(SuppNumRow, 5).Value & .Cells(SuppNumRow, 6).Value _
         & .Cells(SuppNumRow, 8).Value & .Cells(SuppNumRow, 10).Value _
         & .Cells(SuppNumRow, 11).Value & .Cells(SuppNumRow, 12).Value _
-        & .Cells(SuppNumRow, 13).Value & .Cells(SuppNumRow, 15).Value _
+        & .Cells(SuppNumRow, 14).Value & .Cells(SuppNumRow, 15).Value _
         = SuppDiff(1) & SuppDiff(4) & SuppDiff(5) & SuppDiff(6) & SuppDiff(8) _
-        & SuppDiff(10) & SuppDiff(11) & SuppDiff(12) & SuppDiff(13) _
-        & SuppDiff(15) And Len(.Cells(SuppNumRow, 11).Value) > 0 Then
+        & SuppDiff(10) & SuppDiff(11) & SuppDiff(12) & SuppDiff(14) _
+        & SuppDiff(15) And Len(.Cells(SuppNumRow, 15).Value) > 0 Then ' rev.360
         
         If Err Then ErrCollection 10, 1, 16: Exit Function ' EPN = 1
         
-        If .Cells(SuppNumRow, 10).Value & .Cells(SuppNumRow, 11).Value _
-          = SuppDiff(10) & SuppDiff(11) Then
+        If .Cells(SuppNumRow, 10).Value & .Cells(SuppNumRow, 15).Value _
+          = SuppDiff(10) & SuppDiff(15) Then ' rev.360
           .Activate
           If MsgBox("У поставщика '" & SuppDiff(10) & "' изменились основные " _
             & "данные. Необходимо изменить 'Дату актуальности'. " & vbCrLf _
-            & "Изменить 'Дату актуальности' " & SuppDiff(11) & " на " _
+            & "Изменить 'Дату актуальности' " & SuppDiff(15) & " на " _
             & "текущую дату? ", 260 + 48, "Данные о поставщике") = vbYes Then
-            .Cells(SuppNumRow, 11) = Date
+            .Cells(SuppNumRow, 15) = Date ' rev.360
           Else
-            .Cells(SuppNumRow, 11).Select: Exit Function
+            .Cells(SuppNumRow, 15).Select: Exit Function ' rev.360
           End If
         End If
         CheckSupplier = True ' Подтвердить изменение данных
@@ -624,21 +647,21 @@ Public Function ChangedBeforeSave(ByRef Sh As Worksheet) As Boolean
   If Sh.CodeName = Set_spName And IsArray(SuppDiff) And SuppNumRow > 1 Then
     ''Stop
     If Not CheckSupplier Then ' Если изменены данные о поставщике
-      'If Len(SuppDiff(11)) > 0 And Not Sh.Cells(SuppNumRow, 1).Value _
+      'If Len(SuppDiff(15)) > 0 And Not Sh.Cells(SuppNumRow, 1).Value _
         & Sh.Cells(SuppNumRow, 4).Value & Sh.Cells(SuppNumRow, 5).Value _
         & Sh.Cells(SuppNumRow, 6).Value & Sh.Cells(SuppNumRow, 8).Value _
-        & Sh.Cells(SuppNumRow, 10).Value & Sh.Cells(SuppNumRow, 12).Value _
-        & Sh.Cells(SuppNumRow, 13).Value & Sh.Cells(SuppNumRow, 15).Value _
+        & Sh.Cells(SuppNumRow, 10).Value & Sh.Cells(SuppNumRow, 11).Value _
+        & Sh.Cells(SuppNumRow, 12).Value & Sh.Cells(SuppNumRow, 14).Value _
         = SuppDiff(1) & SuppDiff(4) & SuppDiff(5) & SuppDiff(6) & SuppDiff(8) _
-        & SuppDiff(10) & SuppDiff(12) & SuppDiff(13) & SuppDiff(15) Then
+        & SuppDiff(10) & SuppDiff(11) & SuppDiff(12) & SuppDiff(14) Then
       If Not Sh.Cells(SuppNumRow, 1).Value & Sh.Cells(SuppNumRow, 4).Value _
         & Sh.Cells(SuppNumRow, 5).Value & Sh.Cells(SuppNumRow, 6).Value _
         & Sh.Cells(SuppNumRow, 8).Value & Sh.Cells(SuppNumRow, 10).Value _
         & Sh.Cells(SuppNumRow, 11).Value & Sh.Cells(SuppNumRow, 12).Value _
-        & Sh.Cells(SuppNumRow, 13).Value & Sh.Cells(SuppNumRow, 15).Value _
+        & Sh.Cells(SuppNumRow, 14).Value & Sh.Cells(SuppNumRow, 15).Value _
         = SuppDiff(1) & SuppDiff(4) & SuppDiff(5) & SuppDiff(6) & SuppDiff(8) _
-        & SuppDiff(10) & SuppDiff(11) & SuppDiff(12) & SuppDiff(13) _
-        & SuppDiff(15) And Len(Sh.Cells(SuppNumRow, 11).Value) > 0 Then
+        & SuppDiff(10) & SuppDiff(11) & SuppDiff(12) & SuppDiff(14) _
+        & SuppDiff(15) And Len(Sh.Cells(SuppNumRow, 15).Value) > 0 Then ' rev.360
         
         ErrCollection 20, 1, 16, Sh.Cells(SuppNumRow, 10) ' EPN = 1
         ChangedBeforeSave = True
@@ -652,7 +675,7 @@ Public Sub ListCost(ByRef Sh As Worksheet, ByVal TargetRow As Long)
 Dim Src As String, OrgBody As String ''' ???
   OrgBody = Sh.Cells(TargetRow, 1) ' Список «Категория цены» для Поставщика
   ''Stop ' Добавить OrgBody
-  Sh.Cells(TargetRow, 12).Validation.Delete ' Очистка проверки данных
+  Sh.Cells(TargetRow, 11).Validation.Delete ' Очистка проверки данных rev.360
   
   If Len(OrgBody) > 2 And Let_OrgBodyList Like "*" & OrgBody & "*" Then
     For Counter = LBound(Cost(OrgBody), 2) To UBound(Cost(OrgBody), 2)
@@ -668,7 +691,7 @@ Dim Src As String, OrgBody As String ''' ???
         Src = "стандарт,ДПР" ' Исключаем как архивные «Категория цены» = «РИЦ»
       End If
     Next Counter
-    With Sh.Cells(TargetRow, 12).Validation
+    With Sh.Cells(TargetRow, 11).Validation ' rev.360
       .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Formula1:=Src
       .ErrorTitle = "Категория цен"
       .ErrorMessage = "Необходимо выбрать значение из списка "
@@ -680,26 +703,26 @@ End Sub
 ''' ???
 Public Function GetCosts(ByRef Sh As Worksheet, ByVal PartRow As Long) As String
 Dim SuppCost As Variant, PartDate As Variant, OrgBody As String ' rev.340
-  On Error GoTo DateExit ' rev.340 If IsEmpty(Cost) Then GoTo DateExit
+  On Error GoTo DataExit ' rev.340 If IsEmpty(Cost) Then GoTo DataExit
     'Stop '' STOP
     PartDate = Sh.Cells(PartRow, 6)
     With App_Wb.Sheets(Sh_List(Set_arName))
       OrgBody = .Cells(SuppNumRow, 1) ' rev.340
       For Counter = LBound(Cost(OrgBody), 2) To UBound(Cost(OrgBody), 2)
       
-      Debug.Print Cost(OrgBody)(0, Counter); "="; .Cells(SuppNumRow, 12)
+      Debug.Print Cost(OrgBody)(0, Counter); "="; .Cells(SuppNumRow, 11) ' rev.360
       Debug.Print Cost(OrgBody)(1, Counter); "<="; PartDate
       ''Stop
         
-        If Cost(OrgBody)(0, Counter) = .Cells(SuppNumRow, 12) _
-        And Cost(OrgBody)(1, Counter) <= PartDate Then
+        If Cost(OrgBody)(0, Counter) = .Cells(SuppNumRow, 11) _
+        And Cost(OrgBody)(1, Counter) <= PartDate Then ' rev.360
           ' ВАЖНО! Если следующее поле цены «Актуально» > «Даты актуальности»
           If Cost(OrgBody)(0, Counter) <> Cost(OrgBody)(0, Counter + 1) _
           Or (Cost(OrgBody)(0, Counter) = Cost(OrgBody)(0, Counter + 1) _
           And Cost(OrgBody)(1, Counter + 1) > PartDate) Then _
             SuppCost = MultidimArr(Cost(OrgBody), Counter, 2): Exit For
         End If
-      Next Counter: If Counter > UBound(Cost(OrgBody), 2) Then GoTo DateExit
+      Next Counter: If Counter > UBound(Cost(OrgBody), 2) Then GoTo DataExit
     End With
     Select Case Sh.CodeName
       Case "SF_" ' КФ
@@ -730,7 +753,7 @@ Dim SuppCost As Variant, PartDate As Variant, OrgBody As String ' rev.340
       Case Else: GetCosts = "=-300"
     End Select
 Exit Function
-DateExit:
+DataExit:
   'Debug.Print "SuppNumRow ="; SuppNumRow
   If ActiveCell.Column = 6 And IsEmpty(ActiveCell) Then
     GetCosts = "=0"
@@ -754,12 +777,12 @@ Public Sub GetSuppRow(ByRef Sh As Worksheet, ByVal PartRow As Long)
     cnfRenew = .Name ' ВАЖНО! Передаём имя листа
     Do Until IsEmpty(.Cells(Counter, 10)) ' Счётчик строк ' Выполнять ДО
       If .Cells(Counter, 10) = Sh.Cells(PartRow, 5) _
-      And .Cells(Counter, 11) <= Sh.Cells(PartRow, 6) Then
+      And .Cells(Counter, 15) <= Sh.Cells(PartRow, 6) Then ' rev.360
         ' ВАЖНО! Если следующая «Дата актуальности» > «Дата поступления», то
         If .Cells(Counter, 10) <> .Cells(Counter + 1, 10) Or _
           (.Cells(Counter, 10) = .Cells(Counter + 1, 10) _
-        And .Cells(Counter + 1, 11) > Sh.Cells(PartRow, 6)) Then _
-          SuppNumRow = Counter: Exit Sub
+        And .Cells(Counter + 1, 15) > Sh.Cells(PartRow, 6)) Then _
+          SuppNumRow = Counter: Exit Sub ' rev.360
       End If: Counter = Counter + 1
     Loop
   End With
@@ -770,5 +793,8 @@ Private Sub SendKeyEnter() ' Эмуляция нажатия клавиши «En
 End Sub
 
 Private Sub SendKeysCtrlV() ' Эмуляция нажатия клавиш «Ctrl+V»
-  Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone
+  On Error Resume Next ' rev.360
+    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone
+    If Err Then ActiveSheet.PasteSpecial Format:="Текст"
+  On Error GoTo 0
 End Sub
