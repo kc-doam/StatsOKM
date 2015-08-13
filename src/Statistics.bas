@@ -2,7 +2,7 @@ Attribute VB_Name = "Statistics"
 Option Explicit
 Option Base 1
 '12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
-Public Const Let_SuppList = "Список_Поставщиков", revFile As Integer = 360
+Public Const Let_SuppList = "Список_Поставщиков", revFile As Integer = 370
 ' Внутреннее имя листа «Настройки», Внутреннее имя листа «Архив» и «Поставщики»
 Public Const Set_cnfName = "CONF_", Set_arName = "ARCH_", Set_spName = "SUPP_"
 Public Const Let_UrgencyTransList = "$Новое,$Наши вопросы,$Доработка,$Иное"
@@ -10,7 +10,7 @@ Public Const Let_ContrFormList = "станд.,опер."
 Private Const Let_OrgBodyList = "Ф/Л,Ю/Л" ' Не менять!
 
 ' Рабочая книга, Рабочий лист, Имя рабочего листа/параметра
-Public App_Wb As Workbook, cnfRenew As String, cstPath As String
+Public ThisWb As Workbook, cnfRenew As String, cstPath As String
 ' Массив с изменениями о поставщике, Номер выделенной строки о поставщике
 Public SuppDiff As Variant, SuppNumRow As Long, PartNumRow As Long
 
@@ -102,22 +102,22 @@ Const Let_cstPath = "\Архив\Cost.accdb" ' Цены
     Next SuppDiff
   End With: Set Rec = Nothing: Set Conn = Nothing
   
-  App_Wb.Sheets(Sh_List("SF_")).Activate ' ВАЖНО! Уйти с листа «Поставщики»
-  For Each Rec In App_Wb.NameS ' Диапазон «Список_Поставщиков»
+  ThisWb.Sheets(Sh_List("SF_")).Activate ' ВАЖНО! Уйти с листа «Поставщики»
+  For Each Rec In ThisWb.NameS ' Диапазон «Список_Поставщиков»
     If Rec.Name = Let_SuppList Then Rec.Delete
   Next Rec
   With ActiveWorkbook.NameS.Add(Name:=Let_SuppList, RefersTo:="=$E$1")
     .Comment = "Список листа Поставщики": .RefersTo = "=OFFSET('" _
-      & App_Wb.Sheets(Sh_List(Set_spName)).Name & "'!$J$1,1,,COUNTA('" _
-      & App_Wb.Sheets(Sh_List(Set_spName)).Name & "'!$J:$J)-1,)"
+      & ThisWb.Sheets(Sh_List(Set_spName)).Name & "'!$J$1,1,,COUNTA('" _
+      & ThisWb.Sheets(Sh_List(Set_spName)).Name & "'!$J:$J)-1,)"
   End With: If CostChanged Then CostUpdate ' rev.340
   
-  If Not App_Wb.ReadOnly Then
-    For Each Conn In App_Wb.Sheets
+  If Not ThisWb.ReadOnly Then
+    For Each Conn In ThisWb.Sheets
       If Conn.CodeName = Set_cnfName Then UnprotectSheet Conn: _
         Conn.Range(Set_cnfName & "CostDate") = SuppDiff: SuppDiff = Empty
       ProtectSheet Conn ' rev.340
-    Next Conn: cnfRenew = "": App_Wb.Save ' Если доступен, сохранить
+    Next Conn: cnfRenew = "": ThisWb.Save ' Если доступен, сохранить
   End If: cnfRenew = ActiveSheet.Name
 End Sub
 
@@ -140,7 +140,7 @@ End Function
 Public Sub CostUpdate(Optional ByVal Supplier As String = "*") ' rev.340
 Dim App_Sh As Worksheet, LastRow As Integer, Rec As Object
   Application.StatusBar = "Пожалуйста, подождите. Идёт обновление цен..."
-  For Each App_Sh In App_Wb.Sheets ' Процедура пересчёта итоговых сумм
+  For Each App_Sh In ThisWb.Sheets ' Процедура пересчёта итоговых сумм
     If App_Sh.CodeName Like "[OQS]?_" Then
       With UnprotectSheet(App_Sh)
         '.Activate:
@@ -193,9 +193,9 @@ Public Sub SpecificationSheets(ByVal SheetIndex As Byte)
 Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
   On Error GoTo DataExit ' rev.350
     'Stop ' #3 Копирование заголовка, Установка условного форматирования
-    For Each App_Sh In App_Wb.Sheets
+    For Each App_Sh In ThisWb.Sheets
       Application.ScreenUpdating = False ' ВЫКЛ Обновление экрана
-      With UnprotectSheet(App_Wb.Sheets(App_Sh.Index))
+      With UnprotectSheet(ThisWb.Sheets(App_Sh.Index))
         PreError = 0: .Activate ': UnprotectSheet App_Sh
         With ActiveWindow ' CTRL+HOME
           .ScrollRow = 1: .ScrollColumn = 1: .FreezePanes = False
@@ -215,7 +215,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
         
         Select Case .CodeName
           Case Set_spName, Set_arName ' Лист «Поставщики», «Архив»
-            If .CodeName = Set_arName Then App_Wb.Sheets(Sh_List(Set_spName)) _
+            If .CodeName = Set_arName Then ThisWb.Sheets(Sh_List(Set_spName)) _
               .Range("A1:O1").Copy Destination:=.Range("A1")
               'SendKeys "^{HOME}", False ' rev.250 Фокус должен быть на MS Excel
               '.Cells(1, 1).AutoFilter
@@ -237,7 +237,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
               .Columns("R:R").NumberFormat = "[$-419]"".+. (""0000"") "";@"
               .Columns("V:V").NumberFormat = "[$-419]000-000-000-00;@"
               .Columns("W:W").NumberFormat = _
-                "[<=9999999999]0000000000;000000000000;@"
+                "[<=9999999999]#000000000;#00000000000;@" ' rev.370
               .Columns("X:X").NumberFormat = "[$-419]000000000;@"
               .Columns("AA:AA").NumberFormat = "@"
             End If
@@ -282,7 +282,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                     & "И($A2=""Ю/Л"";ДЛСТР($W2)>10))")
                   .Interior.ColorIndex = 44: .StopIfTrue = True
                 End With
-                .Range("N2:AB" & LastRow).FormatConditions.Add Type:=xlNoBlanksCondition  ' rev.360
+                .Range("N2:AB" & LastRow).FormatConditions.Add Type:=xlNoBlanksCondition ' rev.360
                 With .Range("N2:N" & LastRow & ",U2:U" & LastRow & ",Z2:Z" & LastRow).FormatConditions _
                   .Add(Type:=xlBlanksCondition) ' rev.360
                   .Interior.ColorIndex = 36: .StopIfTrue = True
@@ -314,6 +314,14 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
             PreError = PreError + 1: LastRow = LastRow + 9
             ' Проверка ввода данных
             If .CodeName = Set_spName Then
+              With .Range("J2:J" & LastRow).Validation ' rev.370
+                .Add Type:=xlValidateCustom, AlertStyle:=xlValidAlertStop, _
+                  Formula1:="=COUNTIF($J:$J,$J2)<=1"
+                .ErrorTitle = "Поставщик (кратко)"
+                .ErrorMessage = "Поставщик уже существует. Добавление " _
+                  & "дубликата записи не требуется "
+                .ShowError = True: .IgnoreBlank = True
+              End With
               With .Range("A2:A" & LastRow).Validation
                 .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
                   Formula1:=Let_OrgBodyList
@@ -423,6 +431,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
             ' Форматирование колонок
             .Columns("A:D").NumberFormat = "General"
             .Columns("B:B").NumberFormat = "@" ' rev.340
+            .Columns("AW:AW").NumberFormat = "@" ' rev.370
             With .Columns("X:AU") ' rev.350
               .NumberFormat = "#,##0"
               .HorizontalAlignment = xlRight: .IndentLevel = 1
@@ -463,6 +472,10 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
               With .Range("G2:G" & LastRow).FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=СЧЁТЕСЛИМН($E$2:$E" & LastRow & ";$E2;$G$2:$G" & LastRow & ";$G2)>1")
                 .Interior.ColorIndex = 45: .StopIfTrue = True ' rev.360
+              End With
+              With .Range("G2:G" & LastRow).FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И(E2<>"""";G2="""";AB2<>"""")")
+                .Interior.ColorIndex = 44: .StopIfTrue = True ' rev.370
               End With
               
               ' ВЫБОР(ПОИСКПОЗ(СТОЛБЕЦ();$BA$1:$BC$1;0);30;9;14) = ЕСЛИОШИБКА(ВЫБОР(ПОИСКПОЗ(ИНДЕКС($1:$1;1;СТОЛБЕЦ());K1:L1;0);30;9);14)
@@ -560,12 +573,17 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
               If LastRow > 2 ^ 7 Then .Offset(, -2).End(xlDown).Select
             End With
         End Select: .Outline.ShowLevels ColumnLevels:=1: ProtectSheet App_Sh
+        If Not .CodeName = Set_cnfName Then ' Если не скрытый лист rev.370
+          With .Cells(1, 1).End(xlToRight).Offset(, 1) ' Скрыть столбцы
+            App_Sh.Range(.address, .End(xlToRight)).EntireColumn.Hidden = True
+          End With
+        End If
       End With
     Next App_Sh
     'On Error Resume Next
-    '  App_Wb.Sheets(SheetIndex).Select
-    '  If Err Then App_Wb.Sheets(Sh_List("SF_")).Select
-    App_Wb.Sheets(Sh_List("SF_")).Select
+    '  ThisWb.Sheets(SheetIndex).Select
+    '  If Err Then ThisWb.Sheets(Sh_List("SF_")).Select
+    ThisWb.Sheets(Sh_List("SF_")).Select
     'On Error GoTo 0
     Application.ScreenUpdating = True ' ВКЛ Обновление экрана
     'SendKeys "{NUMLOCK}", True ' Костыль v2.5 Фокус должен быть на MS Excel
@@ -581,8 +599,8 @@ Dim i As Integer: Counter = 0: i = 2
   If NewSupplier And IsArray(SuppDiff) Then ' => SuppNumRow = 0
     On Error Resume Next
       If Len(SuppDiff(10)) > 0 And Len(SuppDiff(11)) > 0 Then
-        With UnprotectSheet(App_Wb.Sheets(Sh_List(Set_arName)))
-        'With App_Wb.Sheets(Sh_List(Set_arName))
+        With UnprotectSheet(ThisWb.Sheets(Sh_List(Set_arName)))
+        'With ThisWb.Sheets(Sh_List(Set_arName))
           Do Until IsEmpty(.Cells(i, 10)) ' Счётчик строк ' Выполнять ДО
             ' Поставщик без «Даты актуальности» не добавляется
             If .Cells(i, 10) = SuppDiff(10) _
@@ -595,12 +613,12 @@ Dim i As Integer: Counter = 0: i = 2
           .Cells(i, 1).Resize(, UBound(SuppDiff)) = SuppDiff
           If IsDate(SuppDiff(15)) Then .Cells(i, 15) = CDate(SuppDiff(15)) ' rev.360
           
-          SortSupplier App_Wb.Sheets(Sh_List(Set_arName)), 10, 15 ' rev.360
+          SortSupplier ThisWb.Sheets(Sh_List(Set_arName)), 10, 15 ' rev.360
           CostUpdate SuppDiff(10) ' rev.340
           
           If Err Then ErrCollection Err.Number, 3, 16, .Name ' EPN = 3
         End With: SuppNumRow = 0: SuppDiff = Empty ' Очищаем массив SuppDiff
-        ProtectSheet App_Wb.Sheets(Sh_List(Set_arName))
+        ProtectSheet ThisWb.Sheets(Sh_List(Set_arName))
       End If
     On Error GoTo 0 ' ВАЖНО! Отключаем сообщения об ошибках
   End If
@@ -610,7 +628,7 @@ End Sub
 Public Function CheckSupplier() As Boolean
   On Error Resume Next
     ' ВАЖНО! Обновление списка с Индексами листов
-    With App_Wb.Sheets(GetSheetList(Set_spName))
+    With ThisWb.Sheets(GetSheetList(Set_spName))
       If Not .Cells(SuppNumRow, 1).Value & .Cells(SuppNumRow, 4).Value _
         & .Cells(SuppNumRow, 5).Value & .Cells(SuppNumRow, 6).Value _
         & .Cells(SuppNumRow, 8).Value & .Cells(SuppNumRow, 10).Value _
@@ -706,7 +724,7 @@ Dim SuppCost As Variant, PartDate As Variant, OrgBody As String ' rev.340
   On Error GoTo DataExit ' rev.340 If IsEmpty(Cost) Then GoTo DataExit
     'Stop '' STOP
     PartDate = Sh.Cells(PartRow, 6)
-    With App_Wb.Sheets(Sh_List(Set_arName))
+    With ThisWb.Sheets(Sh_List(Set_arName))
       OrgBody = .Cells(SuppNumRow, 1) ' rev.340
       For Counter = LBound(Cost(OrgBody), 2) To UBound(Cost(OrgBody), 2)
       
@@ -763,9 +781,9 @@ DataExit:
       "на " & PartDate, "в строке #" & PartRow) ' EPN = 1
     GetCosts = IIf(IsEmpty(Sh.Cells(PartRow, 5)), "=-100", "=-200")
     ' Ошибка, поэтому обновить суммы при открытии статистики
-    With UnprotectSheet(App_Wb.Sheets(Sh_List(Set_cnfName)))
+    With UnprotectSheet(ThisWb.Sheets(Sh_List(Set_cnfName)))
       .Range(Set_cnfName & "CostDate") = 0
-    End With: ProtectSheet App_Wb.Sheets(Sh_List(Set_cnfName))
+    End With: ProtectSheet ThisWb.Sheets(Sh_List(Set_cnfName))
   End If
 End Function
 
@@ -773,7 +791,7 @@ End Function
 Public Sub GetSuppRow(ByRef Sh As Worksheet, ByVal PartRow As Long)
   SuppNumRow = 0: Counter = 1 + 1 ' Счётчик строк листа «Архив»
   ' ВАЖНО! Обновление списка с Индексами листов
-  With App_Wb.Sheets(GetSheetList(Set_arName))
+  With ThisWb.Sheets(GetSheetList(Set_arName))
     cnfRenew = .Name ' ВАЖНО! Передаём имя листа
     Do Until IsEmpty(.Cells(Counter, 10)) ' Счётчик строк ' Выполнять ДО
       If .Cells(Counter, 10) = Sh.Cells(PartRow, 5) _
@@ -786,15 +804,4 @@ Public Sub GetSuppRow(ByRef Sh As Worksheet, ByVal PartRow As Long)
       End If: Counter = Counter + 1
     Loop
   End With
-End Sub
-
-Private Sub SendKeyEnter() ' Эмуляция нажатия клавиши «Enter»
-  SendKeys "{ESC}", True: SendKeys "{ENTER}", False ' Костыль
-End Sub
-
-Private Sub SendKeysCtrlV() ' Эмуляция нажатия клавиш «Ctrl+V»
-  On Error Resume Next ' rev.360
-    Selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone
-    If Err Then ActiveSheet.PasteSpecial Format:="Текст"
-  On Error GoTo 0
 End Sub

@@ -10,15 +10,34 @@ Property Get GetUserName() As String
   GetUserName = Environ("UserName")
 End Property
 
-Property Let Quit(ByVal xlBlock As Boolean) ' вместо End rev.340
+Private Sub SendKeyEnter() ' Эмуляция нажатия клавиши «Enter» rev.370
+  On Error Resume Next
+    If ThisWb.FullName = Wb.FullName Then _
+      SendKeys "{ESC}", True: SendKeys "{ENTER}", False ' Костыль
+End Sub
+
+Private Sub SendKeysCtrlV() ' Эмуляция нажатия клавиш «Ctrl+V» rev.370
+  On Error Resume Next
+    With Selection
+      .PasteSpecial Paste:=xlPasteValues, Operation:=xlNone
+      If ThisWb.FullName <> ActiveWorkbook.FullName Then
+        ' Вставка форматов, Очистка условного форматирования
+        .PasteSpecial Paste:=xlPasteFormats, Operation:=xlNone
+        .Cells.FormatConditions.Delete
+      End If: If Err Then ActiveSheet.PasteSpecial Format:="Текст"
+    End With
+End Sub
+
+Property Let Quit(ByVal xlBlock As Boolean) ' вместо "End" rev.340
   With Application
     If xlBlock Then
-      With UnprotectSheet(App_Wb.Sheets(GetSheetList(Set_spName)))
-        .Cells.Locked = True
-      End With: ProtectSheet App_Wb.Sheets(Sh_List(Set_spName))
-      .CellDragAndDrop = True: .MoveAfterReturnDirection = xlDown: End
+      UnprotectSheet(ThisWb.Sheets(GetSheetList(Set_spName))).Cells.Locked = True
+      ProtectSheet ThisWb.Sheets(Sh_List(Set_spName))
+      .CellDragAndDrop = True: .MoveAfterReturnDirection = xlDown
+      .DisplayPasteOptions = True: .CommandBars("Cell").Reset: End ' rev.370
     Else
       .CellDragAndDrop = False: .MoveAfterReturnDirection = xlToRight
+      .DisplayPasteOptions = False ' rev.370
       ActiveWindow.Caption = ActiveWorkbook.Name & " (rev." & revFile & ")" _
         & IIf(ActiveWorkbook.ReadOnly, "  [Только для чтения]", "") ' rev.360
     End If
@@ -33,7 +52,7 @@ Const Let_accPath = "X:\Avtor_M\#Finansist\YCHET" ' Директория «YCHET
   If GetSheetList(Set_cnfName) < 1 Then ErrCollection 1001, 1, 16 ' EPN = 1
 '  Worksheets(Sh_List(Set_cnfName)).Visible = xlSheetVeryHidden ' СКРЫТЬ rev.330
   RemoveCollection Settings: Settings.Add "#1/1/2009#", "date0" ' для SQL
-  For Each iND In App_Wb.Sheets(Sh_List(Set_cnfName)).NameS ' Из листа «Настройки»
+  For Each iND In ThisWb.Sheets(Sh_List(Set_cnfName)).NameS ' Из листа «Настройки»
     With iND
       Bank = Left(.Name, InStr(.Name, "_")): SubBank = Mid(.Name, Len(Bank) + 1)
       If Not .Value Like "*[#]*" Then
@@ -49,7 +68,7 @@ End Sub
 Public Function GetSheetList(ByVal FindCodeNameSheet As String) As Byte ' rev.300
 Dim App_Sh As Worksheet: RemoveCollection Sh_List
   On Error Resume Next
-    For Each App_Sh In App_Wb.Sheets
+    For Each App_Sh In ThisWb.Sheets
       Sh_List.Add App_Sh.Index, App_Sh.CodeName ' Добавляем индекс в список
       If App_Sh.CodeName = FindCodeNameSheet _
       Or App_Sh.Name = FindCodeNameSheet Then GetSheetList = App_Sh.Index
@@ -138,7 +157,7 @@ Dim Ask As Byte, Msg As String, Title As String:
     ' EPN = 2
     Case 10: Ask = 2: Msg = IIf(Len(Str), "Невозможно снять защиту с листа '" _
       & Str & "'. ", "Лист не защищён. ") & "Коллекция 'Settings' is Nothing! "
-    Case 182, 184: Ask = 0: Msg = "Значение переменной 'App_Wb' is Nothing! " _
+    Case 182, 184: Ask = 0: Msg = "Значение переменной 'ThisWb' is Nothing! " _
       & "Работа с данными невозможна! " & vbCrLf & IIf(ErrNumber = 92, "Необ" _
       & "ходимо сохранить файл '" & Windows(1).Caption & "' и открыть заново. " _
       & vbCr & vbCrLf & "При частом появлении ошибки о", "О") & "братитесь " _
@@ -153,6 +172,9 @@ Dim Ask As Byte, Msg As String, Title As String:
     Case 3018: Msg = "Невозможно создать условное форматирование. Ошибка " _
       & "в связанных диапазонах, либо лист '" & Str & "' защищён от записи. " _
       & vbCrLf: Title = "Ошибка ввода данных "
+    Case 3021: Msg = "Невозможно применить проверку данных. Ошибка " _
+      & "в формуле, либо лист '" & Str & "' защищён от записи. " _
+      & vbCrLf: Title = "Критическая ошибка ": Icon = 16 ' rev.370
     ' not EPN
     Case Else: Msg = "Неизвестная ошибка #" & ErrNumber & " ": Icon = 16
   End Select: Select Case Ask

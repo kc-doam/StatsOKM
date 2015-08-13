@@ -11,9 +11,9 @@ Option Explicit
 Option Base 1
 '12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
 
-Private WithEvents App As Application, Clipbord_RangeAddress As String
+Private WithEvents App As Application, Clipboard_RangeAddress As String
 Attribute App.VB_VarHelpID = -1
-Private Count As Long  ' Счётчик; Если с минусом, то номер строки
+Private Count As Long ' Счётчик; Если с минусом, то номер строки
 
 Private Sub Class_Initialize() ' Open #1.2
   Set App = Application
@@ -29,15 +29,24 @@ End Sub
 
 Private Sub App_WorkbookActivate(ByVal Wb As Workbook) ' Open #1.4
   On Error Resume Next
-    If App_Wb.FullName = Wb.FullName Then Quit = False
-    If Err Then ErrCollection Err.Number, 2, 16: Quit = 1 ' EPN = 2
-    Clipbord_RangeAddress = Selection.address ' Для буфера
+    If ThisWb.FullName = Wb.FullName Then ' rev.370
+      Quit = False : Clipboard_RangeAddress = Selection.address ' Для буфера
+      With App.CommandBars("Cell") ' Удаление меню специальной вставки
+        ' http://www.rondebruin.nl/win/s4/win011.htm
+        With .Controls.Add(Id:=370, Temporary:=True, _
+          Before:=.Controls(.FindControl(Id:=22).Caption).Index)
+          .Caption = "&Вставить значения": .FaceId = 22 ' Недокументировано
+        End With
+        .FindControl(Id:=22).Delete ' Удалить меню: Вставить
+        .FindControl(Id:=3624).Delete ' Удалить меню: Вставить таблицу
+      End With: App.Calculation = xlAutomatic ' rev.370
+    End If: If Err Then ErrCollection Err.Number, 2, 16: Quit = 1 ' EPN = 2
 End Sub
 
 Private Sub App_WorkbookBeforeClose(ByVal Wb As Workbook, _
 Cancel As Boolean) ' Close #1.1
   On Error Resume Next
-    If App_Wb.FullName = Wb.FullName Then
+    If ThisWb.FullName = Wb.FullName Then
       Cancel = ChangedBeforeSave(Wb.ActiveSheet) ' Отменить закрытие файла
       If Not Cancel And IsArray(SuppDiff) And SuppNumRow > 1 Then _
         Set App = Nothing: RecordCells True ' ЗАПИСЬ
@@ -48,7 +57,7 @@ End Sub
 Private Sub App_WorkbookBeforeSave(ByVal Wb As Workbook, _
 ByVal SaveAsUI As Boolean, Cancel As Boolean) ' Close #1.2
   On Error Resume Next ' SaveAsUI не работает, причина не известна
-    If App_Wb.FullName = Wb.FullName Then
+    If ThisWb.FullName = Wb.FullName Then
       Cancel = ChangedBeforeSave(Wb.ActiveSheet) ' Отменить сохранения файла
       'Debug.Print Cancel; Len(cnfRenew): Stop
       If Not Cancel And Len(cnfRenew) > 0 Then
@@ -59,13 +68,14 @@ ByVal SaveAsUI As Boolean, Cancel As Boolean) ' Close #1.2
 End Sub
 
 Private Sub App_WorkbookDeactivate(ByVal Wb As Workbook) ' Close #1.3
+Dim CopyMode As Boolean: CopyMode = App.CutCopyMode ' Буфер заполнен rev.370
   ' Отключено в rev.330
   On Error Resume Next ' Деактивация книги работает только в окне документа
-    If App_Wb.FullName = Wb.FullName Then
+    If ThisWb.FullName = Wb.FullName Then
       App.CellDragAndDrop = True: App.MoveAfterReturnDirection = xlDown
-      If App.CutCopyMode Then ' Если ячейки скопированы в буфер rev.340
-        App_Wb.Sheets(cnfRenew).Range(Clipbord_RangeAddress).Copy
-      End If
+      App.DisplayPasteOptions = True: App.CommandBars("Cell").Reset ' rev.370
+      If CopyMode Then _
+        ThisWb.Sheets(cnfRenew).Range(Clipboard_RangeAddress).Copy ' rev.370
       'If GetSheetList(Set_spName) > 0 Then
       '  Debug.Print Set_spName; " "; Wb.Sheets(Sh_List(Set_spName)).CodeName
       '  Debug.Print Set_spName: Stop
@@ -106,7 +116,7 @@ Private Sub App_SheetActivate(ByVal Sh As Object) ' #S Белый лист
       .Resize(, 15).Value, 1) ' Исходные данные до ФИО = 15
   End If ': App.ScreenUpdating = True ' ВКЛ Обновление экрана
   Application.Cursor = xlDefault ' Восстановить Курсор «по умолчанию»
-  Clipbord_RangeAddress = Selection.address ' Для буфера
+  'Clipboard_RangeAddress = Selection.address ' Для буфера - откл rev.370
   If Len(cnfRenew) > 0 Then AutoOpenControls: cnfRenew = Sh.Name ' rev.330
 End Sub
 
@@ -117,16 +127,17 @@ ByVal Target As Range, Cancel As Boolean)
   App.ScreenUpdating = False ' ВЫКЛ Обновление экрана
   If Sh.CodeName = Set_spName And Not IsEmpty(Sh.Cells(Target.Row, 10)) _
   And Target.Row > 1 Then
-    With UnprotectSheet(App_Wb.Sheets(Sh_List(Set_arName)))
+    With UnprotectSheet(ThisWb.Sheets(Sh_List(Set_arName)))
       .Activate: .Visible = xlSheetVisible
       If Not IsEmpty(.Cells(1, 10)) Then .Range("A1:O4") _
         .AutoFilter Field:=10, Criteria1:=Sh.Cells(Target.Row, 10) _
       Else Sh.Activate: Cancel = True ' Отменяем событие «Двойной клик»
-    End With: ProtectSheet App_Wb.Sheets(Sh_List(Set_arName))
+    End With: ProtectSheet ThisWb.Sheets(Sh_List(Set_arName))
   End If
   Stop
   If Sh.CodeName Like "[OQS]?_" And Target.Locked Then _
     Cancel = True: SendKeys "{F2}", False ' rev.250 Фокус должен быть на MS Excel
+    'If Target.AllowEdit Then MsgBox ' ЗАМЕНИТЬ! rev.370
   App.ScreenUpdating = True ' ВКЛ Обновление экрана
 End Sub
 
@@ -156,8 +167,8 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal Target As Range)
           Sh.Cells(Target.Row, 20) = Sh.Cells(Target.Row, 12) _
         Else Sh.Cells(Target.Row, 20).ClearContents
       End If
-      ' 08/12/2014 Удаление всех символов, кроме цифр
-      If Target.Column > 24 And Target.Column < 44 Then
+      ' 08/12/2014 Удаление всех символов, кроме цифр rev.370
+      If Sh.CodeName = "SF_" And Target.Column > 24 And Target.Column < 44 Then
         If Not IsArray(Target) And Not Target.HasFormula Then ' Если не массив
           Count = Replace(Val(Target.Value), "-", "")
           If Not Target = Count Then Target = Count
@@ -242,5 +253,5 @@ Dim cell As Range ' Не работает при выборе из списка
     End If
   End If: AutoOpenControls ' rev.330
   ': Application.ScreenUpdating = True ' ВКЛ Обновление экрана
-  Clipbord_RangeAddress = Selection.address ' Для буфера
+  Clipboard_RangeAddress = Selection.address ' Для буфера
 End Sub

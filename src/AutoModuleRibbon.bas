@@ -51,11 +51,11 @@ Private Sub RefreshRibbon(ByVal Tag As String) ' Не останавливать
 End Sub
 
 Private Sub SetFilter(ByRef control As IRibbonControl) ' rev.330
-  With Selection
+  With ActiveCell ' Исключаем ошибку при выделении массива rev.370
     If ActiveSheet.AutoFilterMode And Len(.Value) > 0 Then
-      If control.ID Like "__Add*" And .Row > 1 Then
+      If control.Id Like "__Add*" And .Row > 1 Then
         .AutoFilter Field:=.Column, Criteria1:="=" & .Value
-      ElseIf control.ID Like "__Clear*" Then
+      ElseIf control.Id Like "__Clear*" Then
         On Error Resume Next ' На случай, если значение Автофильтра = Пусто
           ActiveSheet.ShowAllData
       End If

@@ -13,6 +13,6 @@ Option Explicit
 Private XLApp As cExcelEvents
 
 Private Sub Workbook_Open() ' ВАЖНО! Open #1.1
-  If App_Wb Is Nothing Then Set App_Wb = ActiveWorkbook
+  If ThisWb Is Nothing Then Set ThisWb = ActiveWorkbook
   If XLApp Is Nothing Then Set XLApp = New cExcelEvents
 End Sub
