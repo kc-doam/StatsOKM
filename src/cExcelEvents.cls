@@ -30,7 +30,7 @@ End Sub
 Private Sub App_WorkbookActivate(ByVal Wb As Workbook) ' Open #1.4
   On Error Resume Next
     If ThisWb.FullName = Wb.FullName Then ' rev.370
-      Quit = False : Clipboard_RangeAddress = Selection.address ' Для буфера
+      Quit = False: Clipboard_RangeAddress = Selection.address ' Для буфера
       With App.CommandBars("Cell") ' Удаление меню специальной вставки
         ' http://www.rondebruin.nl/win/s4/win011.htm
         With .Controls.Add(Id:=370, Temporary:=True, _
@@ -62,7 +62,7 @@ ByVal SaveAsUI As Boolean, Cancel As Boolean) ' Close #1.2
       'Debug.Print Cancel; Len(cnfRenew): Stop
       If Not Cancel And Len(cnfRenew) > 0 Then
         If IsArray(SuppDiff) And SuppNumRow > 1 Then RecordCells True ' ЗАПИСЬ
-        SpecificationSheets Wb.ActiveSheet.Index
+        'Count = 0: SpecificationSheets Wb.ActiveSheet.Index ' rev.380
       End If
     End If: If Err Then ErrCollection Err.Number, 2, 16: Quit = 1 ' EPN = 2
 End Sub
@@ -158,7 +158,9 @@ ByVal Target As Range, Cancel As Boolean)
   End If
 End Sub
 
+' Процедура App_SheetChange может выполняться 2-й раз
 Private Sub App_SheetChange(ByVal Sh As Object, ByVal Target As Range)
+'  Debug.Print "+ Row ="; Target.Row; " Column ="; Target.Column
   If Target.Worksheet.CodeName = Sh.CodeName Then ' Если лист тот же
     If Sh.CodeName Like "[OQS]?_" And Target.Row > 1 Then
       ' 18/04/2014 Автопростановка "Разрешено включать" по оперативному договору
@@ -183,7 +185,7 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal Target As Range)
 End Sub
 
 Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
-Dim cell As Range ' Не работает при выборе из списка
+'Dim cell As Range ' Не работает при выборе из списка
   If Count < 0 Then Sh.Rows(Abs(Count)).Locked = True: Count = 0 ' Защита ячеек
   If Sh.CodeName = Set_spName And Target.Column = 15 Then Exit Sub ' rev.360
   
@@ -194,12 +196,9 @@ Dim cell As Range ' Не работает при выборе из списка
     If Not SuppNumRow = Selection.Row Then SuppDiff = Empty
     App_SheetActivate Sh ' Костыль
   End If
-  If Sh.CodeName = Set_spName And Target.Row > 1 Then
-    If Target.Column = 11 And Not IsEmpty(Sh.Cells(Target.Row, 10)) Then ' rev.360
-      UnprotectSheet Sh
-      ListCost Sh, Target.Row
-      ProtectSheet Sh
-    End If
+  If Sh.CodeName = Set_spName And Target.Row > 1 Then ' rev.360
+    If Target.Column = 11 And Not IsEmpty(Sh.Cells(Target.Row, 10)) Then _
+      UnprotectSheet Sh: ListCost Sh, Target.Row: ProtectSheet Sh
     'Debug.Print SuppNumRow; " "; Selection.Row
     '' Создаём массив с изменениями о поставщике rev.310
     'If Not SuppNumRow = Selection.Row Then SuppDiff = Empty
@@ -235,23 +234,17 @@ Dim cell As Range ' Не работает при выборе из списка
         .Parent.Locked = False
       End With: ProtectSheet Sh ' rev.330
     End If
+    
+    PartNumRow = Target.Row ' rev.380
     If (Target.Column = 6 Or Target.Column = 7) And PartNumRow > 1 Then
-      With Sh.Cells(PartNumRow, Target.Column)
-        'Stop ' !!!
-        Debug.Print "Sh.Row ="; .Row; " Sh.Column ="; .Column
-        GetSuppRow Sh, .Row ' Поиск строки SuppNumRow у поставщика
-        If Not IsEmpty(Sh.Cells(.Row, 5)) _
-        Or Not IsEmpty(Sh.Cells(.Row, .Column - 1)) Then ' rev.340 And SuppNumRow > 0
-          SetFormula Sh, .Row ' Создание формул для записи rev.350
-        Else
-          For Each cell In Sh.Range(Sh.Cells(.Row, 1), Sh.Cells(.Row, 74))
-            If cell.HasFormula Then cell = ""
-          Next cell
-        End If
-      End With: PartNumRow = Target.Row
+      If Sh.Range(Clipboard_RangeAddress).Column > 5 Then
+        App.ScreenUpdating = False ' ВЫКЛ Обновление экрана
+        If Not IsEmpty(Sh.Cells(Target.Row, 5)) Then _
+          CostUpdate Sh.Cells(Target.Row, 5) ' Костыль And SuppNumRow > 0
+      End If: cnfRenew = Sh.Name
     Else: CostChanged ' Необходимость обновить статистику rev.340
-    End If
+    End If ': PartNumRow = Target.Row ' Перенесено выше
   End If: AutoOpenControls ' rev.330
-  ': Application.ScreenUpdating = True ' ВКЛ Обновление экрана
+  'Application.ScreenUpdating = True ' ВКЛ Обновление экрана
   Clipboard_RangeAddress = Selection.address ' Для буфера
 End Sub

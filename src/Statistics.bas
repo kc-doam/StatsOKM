@@ -2,7 +2,7 @@ Attribute VB_Name = "Statistics"
 Option Explicit
 Option Base 1
 '12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
-Public Const Let_SuppList = "Список_Поставщиков", revFile As Integer = 370
+Public Const Let_SuppList = "Список_Поставщиков", revFile As Integer = 380
 ' Внутреннее имя листа «Настройки», Внутреннее имя листа «Архив» и «Поставщики»
 Public Const Set_cnfName = "CONF_", Set_arName = "ARCH_", Set_spName = "SUPP_"
 Public Const Let_UrgencyTransList = "$Новое,$Наши вопросы,$Доработка,$Иное"
@@ -16,16 +16,15 @@ Public SuppDiff As Variant, SuppNumRow As Long, PartNumRow As Long
 
 ' Коллекция с настройками книги, Коллекция с именами листов
 Public Settings As New Collection, Sh_List As New Collection
-' Коллекция с ценами ОКМ для Ф/Л и Ю/Л, Счётчик
-Private Cost As New Collection, Counter As Integer
+' Коллекция с ценами ОКМ для Ф/Л и Ю/Л, Архивная таблица, Счётчик
+Private Cost As New Collection, Get_Supp() As String, Counter As Integer
 ' Коллекции: ключи коллекции BankID, рабочие листы и колонки
 'Public BankID As New Collection
 ' Коллекция: реквизиты и контакты поставщиков, цены
 'Public BankSUPP As New Collection
 
 Private Sub Auto_Open() ' Автомакрос
-Dim mdwPath As String, LastRow As Long
-Dim Conn As Object, Rec As Object, Src As String
+Dim Conn As Object, Rec As Object, Src As String, mdwPath As String
 Const Let_mdwPath = "\Application Data\Microsoft\Access\System.mdw"
 Const Let_cstPath = "\Архив\Cost.accdb" ' Цены
   SettingsStatistics Settings ' Загрузка настроек книги в коллекцию
@@ -91,7 +90,8 @@ Const Let_cstPath = "\Архив\Cost.accdb" ' Цены
         If Err.Number = 457 Then
           ErrCollection Err.Number, 1, 16, cnfRenew: Quit = True ' EPN = 1
         ElseIf Err.Number = 3021 Then
-          Src = "SELECT 'стандарт' AS '0', " & Settings("date0") & " AS '1'"
+          Src = "SELECT 'стандарт' AS '0', " _
+            & Replace(Settings("date0"), ".", "/") & " AS '1'"
           For Counter = 2 To .Fields.Count - 1
             Src = Src & ", " & IIf(Counter < 5, "-1", "NULL") _
               & " AS '" & Counter & "'"
@@ -103,6 +103,8 @@ Const Let_cstPath = "\Архив\Cost.accdb" ' Цены
   End With: Set Rec = Nothing: Set Conn = Nothing
   
   ThisWb.Sheets(Sh_List("SF_")).Activate ' ВАЖНО! Уйти с листа «Поставщики»
+  ActiveWindow.ScrollRow = _
+    IIf(ActiveCell.Row > 2 ^ 4, ActiveCell.Row - 2 ^ 4, 1) ' rev.380
   For Each Rec In ThisWb.NameS ' Диапазон «Список_Поставщиков»
     If Rec.Name = Let_SuppList Then Rec.Delete
   Next Rec
@@ -124,8 +126,8 @@ End Sub
 Public Function CostChanged() As Boolean ' rev.340
 Dim Conn As Object, LastCostDate As Long
   Set Conn = CreateObject("Scripting.FileSystemObject") ' fso
-  If Conn.FileExists(cstPath) Then LastCostDate = Mid(Log( _
-    Conn.GetFile(cstPath).DateLastModified) - 10, 3, 8): Set Conn = Nothing
+  If Conn.FileExists(cstPath) Then LastCostDate = Mid(Log(Conn _
+    .GetFile(cstPath).DateLastModified) - 10, 3, 8): Set Conn = Nothing
   If LastCostDate > 0 Then
     ' Проверка изменения файла с ценами
     If LastCostDate <> Settings("CostDate") Then
@@ -137,60 +139,81 @@ Dim Conn As Object, LastCostDate As Long
 End Function
 
 '''
-Public Sub CostUpdate(Optional ByVal Supplier As String = "*") ' rev.340
-Dim App_Sh As Worksheet, LastRow As Integer, Rec As Object
-  Application.StatusBar = "Пожалуйста, подождите. Идёт обновление цен..."
+Public Sub CostUpdate(Optional ByVal Supplier As String = "*") ' rev.380
+Dim App_Sh As Worksheet, RecRows As Integer, Item As Integer, Rec() As Variant
+  With ThisWb.Sheets(GetSheetList(Set_arName)) ' Поставщики из архива
+    If Not (Not Not Get_Supp) > 0 Then
+      ReDim Get_Supp(15, .UsedRange.Rows.Count) ' ВАЖНО! Последняя запись Empty
+      For RecRows = LBound(Get_Supp, 1) To UBound(Get_Supp, 1)
+        For Counter = LBound(Get_Supp, 2) To UBound(Get_Supp, 2)
+          Get_Supp(RecRows, Counter) = .Cells(Counter + 1, RecRows) ' Костыль (1 = должен быть Settings("head"))
+      Next Counter, RecRows: Get_Supp(15, Counter - 1) = Date ' ВАЖНО! Заполняем последнюю запись
+    End If: cnfRenew = .Name ' ВАЖНО! Передаём имя листа
+  End With: If Not Len(Supplier) > 1 Then PartNumRow = 1 + 1 ' Количество строк ' Костыль (1 = должен быть Settings("head"))
+  
   For Each App_Sh In ThisWb.Sheets ' Процедура пересчёта итоговых сумм
     If App_Sh.CodeName Like "[OQS]?_" Then
-      With UnprotectSheet(App_Sh)
+      With UnprotectSheet(App_Sh) ' rev.380
         '.Activate:
-        LastRow = .UsedRange.Rows.Count ' Количество строк
-        If LastRow > 1 Then ' Костыль (1 = должен быть Settings("head"))
-        
-          For Each Rec In .Range(.Cells(2, 44), .Cells(LastRow, 44))
-            If .Cells(Rec.Row, 5) Like Supplier Then ' Not IsEmpty(.Cells(Rec.Row, 5))
-              GetSuppRow App_Sh, Rec.Row ' Поиск строки SuppNumRow у поставщика
-              SetFormula App_Sh, Rec.Row ' Создание формул для записи rev.350
-              If .Cells(Rec.Row, 44).Value < 0 Then SuppDiff = 0 ' rev.340
-            End If
-          Next Rec
+        If Len(Supplier) > 1 Then RecRows = 1 Else RecRows = .UsedRange.Rows.Count - 1 ' Количество строк ' Костыль (1 = должен быть Settings("head"))
+        If RecRows > 0 Then ' Если есть записи
+          Application.StatusBar = "Пожалуйста, подождите. " & IIf(RecRows > 1, _
+            "Идёт обновление цен...", "Обновление цен в строке #" & PartNumRow)
+'          Debug.Print PartNumRow; " "; ActiveCell.Row: Stop
+          Rec = .Cells(PartNumRow, 1).Resize(RecRows, 49).FormulaR1C1
+          For Item = LBound(Rec, 1) To UBound(Rec, 1)
+            If GetSuppRow(Rec(Item, 5), Rec(Item, 6)) _
+            And Rec(Item, 5) Like Supplier Then  ' Поиск строки SuppNumRow у поставщика
+              Debug.Print SuppNumRow ' Поиск строки SuppNumRow у поставщика
+              Select Case .CodeName ' Создание формул для записи
+                Case "SF_", "SB_"
+                  Rec(Item, 1) = "=TEXT(RC6,""ММММ.ГГ"")"
+                  Rec(Item, 2) = "='" & cnfRenew & "'!R" & SuppNumRow & "C4"
+                  Rec(Item, 3) = "='" & cnfRenew & "'!R" & SuppNumRow & "C5"
+                  Rec(Item, 4) = "='" & cnfRenew & "'!R" & SuppNumRow & "C8"
+                  'Rec(Item, 28) = "=SUM(RC25:RC27)"
+                  Rec(Item, 32) = "=SUM(RC29:RC31)"
+                  ' НУМ Rec(1, 42) = "=SUM(RC38:RC41)"
+                  Rec(Item, 46) = "=IF('" & cnfRenew & "'!R" & SuppNumRow & "C12=""НДС"",(RC44+RC45)*0.18,IF('" & cnfRenew & "'!R" & SuppNumRow & "C12=""УСН"",""без НДС"",""""))" ' rev.360
+                  Rec(Item, 47) = "=SUM(RC44:RC46)"
+                  ' ЦЕНЫ БО
+              End Select
+            Else
+'              Stop ' Изменить?
+              For Counter = LBound(Rec, 2) To UBound(Rec, 2)
+                If InStr(Rec(Item, Counter), "=") > 0 Then _
+                  Rec(Item, Counter) = Empty ' Удаляем формулы
+              Next Counter
+            End If: Rec(Item, 44) = GetCosts(Rec(Item, 5), Rec(Item, 6), _
+              .CodeName, IIf(RecRows > 1, False, True)) ' Костыль
+          Next Item
+
+          Debug.Print .Cells(PartNumRow, 1).Resize(UBound(Rec, 1)).address
+          .Cells(PartNumRow, 2).Resize(UBound(Rec, 1)).NumberFormat = "General" ' Костыль
+          .Cells(PartNumRow, 16).Resize(UBound(Rec, 1)).NumberFormat = "General" ' Костыль
+          .Cells(PartNumRow, 18).Resize(UBound(Rec, 1)).NumberFormat = "General" ' Костыль
+          .Cells(PartNumRow, 19).Resize(UBound(Rec, 1)).NumberFormat = "General" ' Костыль
+                      
+          'If CDate(Val(Rec(Item - 1, 6))) >= Settings("date0") _
+          And Len(Rec(Item - 1, 6)) > 0 And Not App_Sh.FilterMode Then
+          If Not App_Sh.FilterMode Then _
+            .Cells(PartNumRow, 1).Resize(UBound(Rec, 1), UBound(Rec, 2)) _
+            .FormulaR1C1 = Rec Else .Cells(PartNumRow, 44) _
+            .FormulaR1C1 = Rec(RecRows, 44) ' Проблема с Автофильтром rev.380
         End If
       End With: ProtectSheet App_Sh
+      If Len(Supplier) > 1 And SuppNumRow = 0 Then ' Если одна запись rev.380
+        UnprotectSheet(ThisWb.Sheets(Sh_List(Set_cnfName))) _
+          .Range(Set_cnfName & "CostDate") = 0
+        ProtectSheet ThisWb.Sheets(Sh_List(Set_cnfName)): Exit For
+      End If
     End If
-  Next App_Sh: Application.StatusBar = False
-End Sub
-
-Public Sub SetFormula(ByRef Sh As Worksheet, ByVal TargetRow As Long) ' rev.350
-Dim Arr As Variant
-  Arr = Sh.Range(Sh.Cells(TargetRow, 1), Sh.Cells(TargetRow, 49)).Value
-  Select Case Sh.CodeName
-    Case "KF_", "BO_"
-      Sh.Cells(TargetRow, 2).NumberFormat = "General" ' rev.340
-      Sh.Cells(TargetRow, 6).NumberFormat = "m/d/yyyy"
-      Arr(1, 1) = "=TEXT(R" & TargetRow & "C6,""ММММ.ГГ"")"
-      Arr(1, 2) = "='" & cnfRenew & "'!R" & SuppNumRow & "C4"
-      Arr(1, 3) = "='" & cnfRenew & "'!R" & SuppNumRow & "C5"
-      Arr(1, 4) = "='" & cnfRenew & "'!R" & SuppNumRow & "C8"
-      'Arr(1, 28) = "=SUM(R" & TargetRow & "C25:R" & TargetRow & "C27)"
-      Arr(1, 32) = "=SUM(R" & TargetRow & "C29:R" & TargetRow & "C31)"
-      ' НУМ Arr(1, 42) = "=SUM(R" & TargetRow & "C38:R" & TargetRow & "C41)"
-      Arr(1, 44) = GetCosts(Sh, TargetRow)
-      Arr(1, 46) = "=IF('" & cnfRenew & "'!R" & SuppNumRow & "C12=""НДС"",(R" & TargetRow & "C44+R" & TargetRow & "C45)*0.18,IF('" & cnfRenew & "'!R" & SuppNumRow & "C12=""УСН"",""без НДС"",""""))" ' rev.360
-      Arr(1, 47) = "=SUM(R" & TargetRow & "C44:R" & TargetRow & "C46)"
-      ' ЦЕНЫ БО
-      'Sh.Cells(TargetRow, 57).FormulaR1C1 = "=SUM(R" & TargetRow & "C53:R" & TargetRow & "C56)"
-      'Sh.Cells(TargetRow, 70).FormulaR1C1 = GetCosts(Sh, TargetRow)
-      'Sh.Cells(TargetRow, 71).FormulaR1C1 = "=IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""НДС"",R" & TargetRow & "C70*0.18,IF('" & cnfRenew & "'!R" & SuppNumRow & "C13=""УСН"",""без НДС"",""""))"
-      'Sh.Cells(TargetRow, 73).FormulaR1C1 = "=SUM(R" & TargetRow & "C70:R" & TargetRow & "C72)"
-      'Sh.Cells(TargetRow, 74).FormulaR1C1 = "=R" & TargetRow & "C64+R" & TargetRow & "C73"
-  End Select
-  Sh.Range(Sh.Cells(TargetRow, 1), Sh.Cells(TargetRow, 49)).Value = Arr
-  Sh.Cells(TargetRow, 2).NumberFormat = "@"
+  Next App_Sh: Application.StatusBar = False ' Erase Get_Supp
 End Sub
 
 ' Установка рабочей конфигурации листов
 Public Sub SpecificationSheets(ByVal SheetIndex As Byte)
-Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
+Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
   On Error GoTo DataExit ' rev.350
     'Stop ' #3 Копирование заголовка, Установка условного форматирования
     For Each App_Sh In ThisWb.Sheets
@@ -226,7 +249,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
             .Columns("C:I").Columns.Group: .Columns("F:G").Columns.Group
             If .CodeName = Set_spName Then
               .Columns("A:AB").Locked = False: .Rows("1:1").Locked = True
-              .Columns("M:X").Columns.Group ' rev.360
+              .Columns("P:X").Columns.Group ' rev.380
             End If
             ' Форматирование колонок
             .Columns("D:D").NumberFormat = "@"
@@ -296,10 +319,10 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                   .Interior.ColorIndex = 36: .StopIfTrue = True
                 End With
               End If
-              If .CodeName = Set_arName Then
+              If .CodeName = Set_arName Then ' rev.380
                 With .Range("A2:O" & LastRow).FormatConditions _
-                  .Add(Type:=xlExpression, _
-                    Formula1:="=ЕПУСТО($J2)+МАКС(--($J2:$J9=$J2)*$O2:$O9)=$O2") ' rev.360
+                  .Add(Type:=xlExpression, Formula1:="=ЕПУСТО($J2)+МАКС(--(" _
+                    & "$J2:$J" & LastRow & "=$J2)*$O2:$O" & LastRow & ")=$O2") ' rev.380
                   .Interior.ColorIndex = 43: .StopIfTrue = True
                   '.SetFirstPriority
                 End With
@@ -346,10 +369,9 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                 .ErrorMessage = "Необходимо выбрать значение из списка "
                 .ShowError = True: .IgnoreBlank = True
               End With
-              With .Range("O2:O" & LastRow).Validation ' rev.360
+              With .Range("O2:O" & LastRow).Validation ' rev.380
                 .Add Type:=xlValidateDate, AlertStyle:=xlValidAlertStop, _
-                  Operator:=xlGreaterEqual, Formula1:=Replace( _
-                  Settings("date0"), "#", "")
+                  Operator:=xlGreaterEqual, Formula1:=Settings("date0")
                 .ErrorTitle = "Дата актуальности"
                 .ErrorMessage = "Необходимо ввести дату не раньше " & .Formula1
                 .ShowError = True: .IgnoreBlank = True
@@ -360,18 +382,18 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                 .ErrorTitle = "НДС / УСН"
                 .ErrorMessage = "Необходимо выбрать значение из списка "
               End With
-              With .Range("Q2:Q" & LastRow).Validation
+              With .Range("Q2:Q" & LastRow).Validation ' rev.380
                 .Add Type:=xlValidateDate, AlertStyle:=xlValidAlertStop, _
                   Operator:=xlGreaterEqual, Formula1:=DateAdd( _
-                  "m", -840, Replace(Settings("date0"), "#", ""))
+                  "m", -840, Settings("date0"))
                 .ErrorTitle = "Дата рождения"
                 .ErrorMessage = "Необходимо ввести дату не раньше " & .Formula1
                 .ShowError = True: .IgnoreBlank = True
               End With
-              With .Range("R2:R" & LastRow).Validation
+              With .Range("R2:R" & LastRow).Validation ' rev.380
                 .Add Type:=xlValidateWholeNumber, AlertStyle:=xlValidAlertStop, _
                   Operator:=xlGreaterEqual, Formula1:=DatePart( _
-                  "yyyy", Replace(Settings("date0"), "#", ""))
+                  "yyyy", Settings("date0"))
                 .ErrorTitle = "Заявление о проф. вычете"
                 .ErrorMessage = "Необходимо ввести год не меньше " & .Formula1
                 .ShowError = True: .IgnoreBlank = True
@@ -460,9 +482,10 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                 .Font.ColorIndex = 2: .Interior.ColorIndex = 9
                 .StopIfTrue = True: .SetFirstPriority
               End With
+              .Range("Q:Q").FormatConditions.Add Type:=xlExpression, Formula1:="=И($Q1=39500;$R1=""СМИ-ГК-08"")" ' Костыль rev.380
               With .Range("F2:O" & LastRow & ",Q2:Q" & LastRow & ",T2:X" & LastRow).FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И(ИЛИ(F2<ДАТАЗНАЧ(""" & Replace( _
-                  Settings("date0"), "#", "") & """);F2>СЕГОДНЯ());F2<>"""";F2<>""не оплач."")") ' rev.360
+                .Add(Type:=xlExpression, Formula1:="=И(ИЛИ(F2<ДАТАЗНАЧ(""" & _
+                  Settings("date0") & """);F2>СЕГОДНЯ());F2<>"""";F2<>""не оплач."")") ' rev.380
                 .Interior.ColorIndex = 3: .StopIfTrue = True
               End With
               With .Range("F2:G" & LastRow).FormatConditions _
@@ -474,8 +497,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
                 .Interior.ColorIndex = 45: .StopIfTrue = True ' rev.360
               End With
               With .Range("G2:G" & LastRow).FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И(E2<>"""";G2="""";AB2<>"""")")
-                .Interior.ColorIndex = 44: .StopIfTrue = True ' rev.370
+                .Add(Type:=xlExpression, Formula1:="=И($E2<>"""";$G2="""";$AB2<>"""")")
+                .Interior.ColorIndex = 44: .StopIfTrue = True ' rev.380
               End With
               
               ' ВЫБОР(ПОИСКПОЗ(СТОЛБЕЦ();$BA$1:$BC$1;0);30;9;14) = ЕСЛИОШИБКА(ВЫБОР(ПОИСКПОЗ(ИНДЕКС($1:$1;1;СТОЛБЕЦ());K1:L1;0);30;9);14)
@@ -545,10 +568,9 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
             End If
             PreError = PreError + 1
             ' Проверка ввода данных
-            With .Range("F2:F" & LastRow).Validation ' rev.360
+            With .Range("F2:F" & LastRow).Validation ' rev.380
               .Add Type:=xlValidateDate, AlertStyle:=xlValidAlertStop, _
-                Operator:=xlGreaterEqual, Formula1:=Replace( _
-                Settings("date0"), "#", "")
+                Operator:=xlGreaterEqual, Formula1:=Settings("date0")
               .ErrorTitle = "Дата поступления в ДОАМ"
               .ErrorMessage = "Необходимо ввести дату не раньше " & .Formula1
               .ShowError = True: .IgnoreBlank = True
@@ -569,8 +591,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant
             
             ' Закрепление области
             .Range("G2").Select: ActiveWindow.FreezePanes = True
-            With Selection ' Выделяем ячейку в последней строке rev.350
-              If LastRow > 2 ^ 7 Then .Offset(, -2).End(xlDown).Select
+            With Selection ' Выделяем ячейку в последней строке rev.380
+              If LastRow > 2 ^ 4 Then .Offset(, -2).End(xlDown).Select
             End With
         End Select: .Outline.ShowLevels ColumnLevels:=1: ProtectSheet App_Sh
         If Not .CodeName = Set_cnfName Then ' Если не скрытый лист rev.370
@@ -614,7 +636,8 @@ Dim i As Integer: Counter = 0: i = 2
           If IsDate(SuppDiff(15)) Then .Cells(i, 15) = CDate(SuppDiff(15)) ' rev.360
           
           SortSupplier ThisWb.Sheets(Sh_List(Set_arName)), 10, 15 ' rev.360
-          CostUpdate SuppDiff(10) ' rev.340
+          'CostUpdate SuppDiff(10) ' rev.340
+          Erase Get_Supp: CostUpdate ' rev.380
           
           If Err Then ErrCollection Err.Number, 3, 16, .Name ' EPN = 3
         End With: SuppNumRow = 0: SuppDiff = Empty ' Очищаем массив SuppDiff
@@ -719,89 +742,81 @@ Dim Src As String, OrgBody As String ''' ???
 End Sub
 
 ''' ???
-Public Function GetCosts(ByRef Sh As Worksheet, ByVal PartRow As Long) As String
-Dim SuppCost As Variant, PartDate As Variant, OrgBody As String ' rev.340
+Public Function GetCosts(ByVal Supplier As String, ByVal PartDate As Variant, _
+ByVal CodeNameSheet As String, ByVal ErrMessage As Boolean) As String ' rev.380
+Dim SuppCost As Variant, OrgBody As String
   On Error GoTo DataExit ' rev.340 If IsEmpty(Cost) Then GoTo DataExit
     'Stop '' STOP
-    PartDate = Sh.Cells(PartRow, 6)
-    With ThisWb.Sheets(Sh_List(Set_arName))
-      OrgBody = .Cells(SuppNumRow, 1) ' rev.340
-      For Counter = LBound(Cost(OrgBody), 2) To UBound(Cost(OrgBody), 2)
+    OrgBody = Get_Supp(1, SuppNumRow - 1) ' Костыль
+    For Counter = LBound(Cost(OrgBody), 2) To UBound(Cost(OrgBody), 2)
+    
+    Debug.Print Cost(OrgBody)(0, Counter); "="; Get_Supp(11, SuppNumRow - 1) ' Костыль
+    Debug.Print Cost(OrgBody)(1, Counter); "<="; CDate(PartDate)
       
-      Debug.Print Cost(OrgBody)(0, Counter); "="; .Cells(SuppNumRow, 11) ' rev.360
-      Debug.Print Cost(OrgBody)(1, Counter); "<="; PartDate
-      ''Stop
-        
-        If Cost(OrgBody)(0, Counter) = .Cells(SuppNumRow, 11) _
-        And Cost(OrgBody)(1, Counter) <= PartDate Then ' rev.360
-          ' ВАЖНО! Если следующее поле цены «Актуально» > «Даты актуальности»
-          If Cost(OrgBody)(0, Counter) <> Cost(OrgBody)(0, Counter + 1) _
-          Or (Cost(OrgBody)(0, Counter) = Cost(OrgBody)(0, Counter + 1) _
-          And Cost(OrgBody)(1, Counter + 1) > PartDate) Then _
-            SuppCost = MultidimArr(Cost(OrgBody), Counter, 2): Exit For
-        End If
-      Next Counter: If Counter > UBound(Cost(OrgBody), 2) Then GoTo DataExit
-    End With
-    Select Case Sh.CodeName
+      If Cost(OrgBody)(0, Counter) = Get_Supp(11, SuppNumRow - 1) _
+      And Cost(OrgBody)(1, Counter) <= CDate(PartDate) Then
+        ' ВАЖНО! Если следующее поле цены "Актуально" > "Даты актуальности"
+        If Cost(OrgBody)(0, Counter) <> Cost(OrgBody)(0, Counter + 1) _
+        Or (Cost(OrgBody)(0, Counter) = Cost(OrgBody)(0, Counter + 1) _
+        And Cost(OrgBody)(1, Counter + 1) > CDate(PartDate)) Then _
+          SuppCost = MultidimArr(Cost(OrgBody), Counter, 2): Exit For
+      End If
+    Next Counter: If Counter > UBound(Cost(OrgBody), 2) Then GoTo DataExit
+    Select Case CodeNameSheet
       Case "SF_" ' КФ
         If Len(OrgBody) > 2 And Let_OrgBodyList Like "*" & OrgBody & "*" Then
           For Counter = LBound(SuppCost) To UBound(SuppCost)
-            PartRow = SuppCost(Counter)
+            PartDate = SuppCost(Counter)
             Select Case Counter
-              Case 2: GetCosts = "=RC[-11]*" & PartRow ' Группа 0
-              Case 3: GetCosts = GetCosts & "+RC[-10]*" & PartRow ' Группа 1
-              Case 4: GetCosts = GetCosts & "+RC[-9]*" & PartRow ' Группа 2
-              Case 6: If PartRow > 0 Then GetCosts = Replace(GetCosts, _
-                "RC[-11]", "(RC[-11]-RC[-6])") & "+RC[-6]*" & PartRow ' НУМ 0
-              Case 7: If PartRow > 0 Then GetCosts = Replace(GetCosts, _
-                "RC[-10]", "(RC[-10]-RC[-5])") & "+RC[-5]*" & PartRow ' НУМ 1
-              Case 8: If PartRow > 0 Then GetCosts = Replace(GetCosts, _
-                "RC[-9]", "(RC[-9]-RC[-4])") & "+RC[-4]*" & PartRow ' НУМ 2
-              Case 9: GetCosts = GetCosts & "+RC[-8]*" & PartRow ' НАШ 1
-              Case 10: GetCosts = GetCosts & "+RC[-7]*" & PartRow ' НАШ 2
-              'Case 12: GetCosts = GetCosts & "+RC[-3]*" & PartRow ' Оф письма Ф/Л
-              'Case 14-: GetCosts = GetCosts & "+RC[-2]*" & PartRow ' Бухонлайн Ф/Л
-              Case 13: If PartRow > 0 Then GetCosts = GetCosts _
-                & "+RC[-1]*" & PartRow ' Кодекс Ф/Л
+              Case 2: GetCosts = "=RC[-11]*" & PartDate ' Группа 0
+              Case 3: GetCosts = GetCosts & "+RC[-10]*" & PartDate ' Группа 1
+              Case 4: GetCosts = GetCosts & "+RC[-9]*" & PartDate ' Группа 2
+              Case 6: If PartDate > 0 Then GetCosts = Replace(GetCosts, _
+                "RC[-11]", "(RC[-11]-RC[-6])") & "+RC[-6]*" & PartDate ' НУМ 0
+              Case 7: If PartDate > 0 Then GetCosts = Replace(GetCosts, _
+                "RC[-10]", "(RC[-10]-RC[-5])") & "+RC[-5]*" & PartDate ' НУМ 1
+              Case 8: If PartDate > 0 Then GetCosts = Replace(GetCosts, _
+                "RC[-9]", "(RC[-9]-RC[-4])") & "+RC[-4]*" & PartDate ' НУМ 2
+              Case 9: GetCosts = GetCosts & "+RC[-8]*" & PartDate ' НАШ 1
+              Case 10: GetCosts = GetCosts & "+RC[-7]*" & PartDate ' НАШ 2
+              'Case 12: GetCosts = GetCosts & "+RC[-3]*" & PartDate ' Оф письма Ф/Л
+              'Case 14-: GetCosts = GetCosts & "+RC[-2]*" & PartDate ' Бухонлайн Ф/Л
+              Case 13: If PartDate > 0 Then GetCosts = GetCosts _
+                & "+RC[-1]*" & PartDate ' Кодекс Ф/Л
             End Select
           Next Counter
         End If
       'Case "" ' Актуализация материалов [Группа А] = 5
       'Case "" ' Покупка вопросов Вопросы = 11
       Case Else: GetCosts = "=-300"
-    End Select
-Exit Function
+    End Select: Exit Function
 DataExit:
-  'Debug.Print "SuppNumRow ="; SuppNumRow
-  If ActiveCell.Column = 6 And IsEmpty(ActiveCell) Then
-    GetCosts = "=0"
-  Else
-    If IsEmpty(SuppDiff) Then ErrCollection 40, 1, 48, "для поставщика '" _
-      & Sh.Cells(PartRow, 5) & "' " & IIf(Len(PartDate) > 0, _
-      "на " & PartDate, "в строке #" & PartRow) ' EPN = 1
-    GetCosts = IIf(IsEmpty(Sh.Cells(PartRow, 5)), "=-100", "=-200")
-    ' Ошибка, поэтому обновить суммы при открытии статистики
-    With UnprotectSheet(ThisWb.Sheets(Sh_List(Set_cnfName)))
+  If Len(Supplier) > 0 Then ' rev.380
+    If ErrMessage Then ErrCollection 40, 1, 48, "для поставщика '" & Supplier _
+      & "' " & IIf(CDate(Val(PartDate)) >= Settings("date0"), "на " _
+      & Format(PartDate, "ddddd"), "в строке #" & PartNumRow) ' EPN = 1
+    GetCosts = IIf(Len(PartDate) > 0, "=-200", "=-100"): SuppDiff = Empty ' &H0
+    ' Ошибка, поэтому обновить суммы при открытии статистики rev.380
+    'UnprotectSheet(ThisWb.Sheets(Sh_List(Set_cnfName))) _
       .Range(Set_cnfName & "CostDate") = 0
-    End With: ProtectSheet ThisWb.Sheets(Sh_List(Set_cnfName))
+    'ProtectSheet ThisWb.Sheets(Sh_List(Set_cnfName))
+  Else: GetCosts = Empty
   End If
 End Function
 
-' Поиск строки SuppNumRow с данными о Поставщике на листе «Архив» rev.340
-Public Sub GetSuppRow(ByRef Sh As Worksheet, ByVal PartRow As Long)
-  SuppNumRow = 0: Counter = 1 + 1 ' Счётчик строк листа «Архив»
+' Поиск строки SuppNumRow с данными о Поставщике на листе "Архив" rev.380
+Public Function GetSuppRow(ByVal Supplier As String, _
+ByVal PartDate As Variant) As Boolean
+  SuppNumRow = 0: Counter = 1 ' Счётчик строк листа "Архив"; Костыль
   ' ВАЖНО! Обновление списка с Индексами листов
-  With ThisWb.Sheets(GetSheetList(Set_arName))
-    cnfRenew = .Name ' ВАЖНО! Передаём имя листа
-    Do Until IsEmpty(.Cells(Counter, 10)) ' Счётчик строк ' Выполнять ДО
-      If .Cells(Counter, 10) = Sh.Cells(PartRow, 5) _
-      And .Cells(Counter, 15) <= Sh.Cells(PartRow, 6) Then ' rev.360
-        ' ВАЖНО! Если следующая «Дата актуальности» > «Дата поступления», то
-        If .Cells(Counter, 10) <> .Cells(Counter + 1, 10) Or _
-          (.Cells(Counter, 10) = .Cells(Counter + 1, 10) _
-        And .Cells(Counter + 1, 15) > Sh.Cells(PartRow, 6)) Then _
-          SuppNumRow = Counter: Exit Sub ' rev.360
-      End If: Counter = Counter + 1
-    Loop
-  End With
-End Sub
+  Do While Len(Get_Supp(10, Counter)) > 0 ' Счётчик строк ' Выполнять ПОКА
+    If Get_Supp(10, Counter) = Supplier _
+    And CDate(Get_Supp(15, Counter)) <= CDate(Val(PartDate)) Then ' rev.380
+      ' ВАЖНО! Если следующая "Дата актуальности" > "Дата поступления", то
+      If Get_Supp(10, Counter) <> Get_Supp(10, Counter + 1) Or _
+        (Get_Supp(10, Counter) = Get_Supp(10, Counter + 1) _
+      And CDate(Get_Supp(15, Counter + 1)) > CDate(PartDate)) Then _
+        SuppNumRow = Counter + 1: GetSuppRow = True: Exit Function ' rev.380
+    End If: Counter = Counter + 1
+  Loop
+End Function

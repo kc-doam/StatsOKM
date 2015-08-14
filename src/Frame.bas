@@ -10,9 +10,9 @@ Property Get GetUserName() As String
   GetUserName = Environ("UserName")
 End Property
 
-Private Sub SendKeyEnter() ' Эмуляция нажатия клавиши «Enter» rev.370
+Private Sub SendKeyEnter() ' Эмуляция нажатия клавиши «Enter» rev.380
   On Error Resume Next
-    If ThisWb.FullName = Wb.FullName Then _
+    If ThisWb.FullName = ActiveWorkbook.FullName Then _
       SendKeys "{ESC}", True: SendKeys "{ENTER}", False ' Костыль
 End Sub
 
@@ -51,8 +51,9 @@ Const Let_accPath = "X:\Avtor_M\#Finansist\YCHET" ' Директория «YCHET
   ' ВАЖНО! Обновление списка с Индексами листов
   If GetSheetList(Set_cnfName) < 1 Then ErrCollection 1001, 1, 16 ' EPN = 1
 '  Worksheets(Sh_List(Set_cnfName)).Visible = xlSheetVeryHidden ' СКРЫТЬ rev.330
-  RemoveCollection Settings: Settings.Add "#1/1/2009#", "date0" ' для SQL
-  For Each iND In ThisWb.Sheets(Sh_List(Set_cnfName)).NameS ' Из листа «Настройки»
+  RemoveCollection Settings: Settings.Add DateSerial(2009, 1, 1), "date0"
+  ' Из листа «Настройки»
+  For Each iND In ThisWb.Sheets(Sh_List(Set_cnfName)).NameS
     With iND
       Bank = Left(.Name, InStr(.Name, "_")): SubBank = Mid(.Name, Len(Bank) + 1)
       If Not .Value Like "*[#]*" Then
@@ -67,9 +68,11 @@ End Sub
 ' Обновление списка Индексов листов
 Public Function GetSheetList(ByVal FindCodeNameSheet As String) As Byte ' rev.300
 Dim App_Sh As Worksheet: RemoveCollection Sh_List
+  If ThisWb Is Nothing Then Set ThisWb = ActiveWorkbook ' Приложение rev.380
+  'If XLApp Is Nothing Then Set XLApp = New cExcelEvents ' Модуль rev.380
   On Error Resume Next
     For Each App_Sh In ThisWb.Sheets
-      Sh_List.Add App_Sh.Index, App_Sh.CodeName ' Добавляем индекс в список
+      Sh_List.Add CByte(App_Sh.Index), App_Sh.CodeName ' Индекс в список rev.380
       If App_Sh.CodeName = FindCodeNameSheet _
       Or App_Sh.Name = FindCodeNameSheet Then GetSheetList = App_Sh.Index
     Next App_Sh
@@ -85,7 +88,7 @@ Public Sub ProtectSheet(ByRef Sh As Worksheet) ' Защитить лист
     If Err Then ErrCollection Err.Number, 2, 16, Sh.Name ' EPN = 2
 End Sub
 
-' Снять защиту с листа
+' Снять защиту с листа (не использовать ScreenUpdating)
 Public Function UnprotectSheet(ByRef Sh As Worksheet) As Worksheet
   On Error Resume Next
     If Sh.ProtectScenarios Then Sh.Unprotect Settings("CostPass")
@@ -111,7 +114,7 @@ Private Sub RemoveCollection(ByRef CollectionName As Collection) ' rev.300
   For Counter = 1 To CollectionName.Count: CollectionName.Remove 1: Next Counter
 End Sub
 
-' Заполнение одномерного массива из двумерного (для цен)
+' Заполнение одномерного массива из двумерного (для Цен и текста) rev.380
 Public Function MultidimArr(ByVal Cost As Variant, ByVal Row As Long, _
 Optional ByRef FirstItem As Byte = 0) As Variant
 Dim Arr As Variant
@@ -124,7 +127,8 @@ Dim Arr As Variant
   Else ' для текстовых массивов
     ReDim Arr(LBound(Cost, 2) To UBound(Cost, 2)) As String
     For Counter = LBound(Arr) To UBound(Arr)
-      Arr(Counter) = Cost(Row, Counter)
+      'On Error Resume Next ' Пропуск значений-ошибок rev.380
+        Arr(Counter) = Cost(Row, Counter)
     Next Counter: MultidimArr = Arr
   End If
 End Function

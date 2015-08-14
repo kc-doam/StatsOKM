@@ -2,9 +2,32 @@
 
 :exclamation: Новое, :fire: Исправлено, :star: Расширено, :star2: Оптимизировано, :grey_question: Тестовая версия
 
+### r380
+
+:exclamation: Переименовать колонки "*НУМ*" => "*Всего НУМ*", "*ИТОГО Финансист*" => "*ИТОГО КФ*"
+
+:exclamation: создать массив **Get_Supp** для отслеживания изменений данных поставщика
+
+:fire: Модуль ***Statistics.bas***
+- :exclamation: Функция `GetSuppRow`: поиск строки о поставщике по данным из массива **Get_Supp**
+- :star: Функция `CostUpdate`: создать формулы в строке с поставщиком на листах `SF_` и `SB_`
+- :grey_question: Функция `SetFormula`: удалить, методы делегированы функции `CostUpdate`
+- :fire: Процедура `SpecificationSheets`: небольшие изменения в форматировании ячеек
+- :star2: Функция `GetCosts`: добавить параметры; использовать массив **Get_Supp** для выборки данных о текущем поставщике
+- :grey_question: Процедура `GetSuppRow`: удалить, методы делегированы функции `GetSuppRow`
+
+:exclamation: Модуль ***Frame.bas***
+- :fire: Процедура `SendKeyEnter`: объект `Wb` заменить => на `ActiveWorkbook`
+- :star: Функция `GetSheetList`: добавить проверку присутствия объекта `ThisWb`; добавить в коллекцию индекс листа с типом "байт"
+- :star2: Процедура `SettingsStatistics`: добавить в коллекцию тип даты в местном формате
+
+:fire: Класс ***cExcelEvents.cls***
+- :grey_question: Процедура `App_WorkbookBeforeClose`: удалить процедуру `SpecificationSheets`
+- :fire: Процедура `App_SheetSelectionChange`: удалить процедуру `GetSuppRow`; удалить функцию `SetFormula`; присвоить переменной `PartNumRow` номер строки до определения номера текущей колонки
+
 ### r370
 
-:exclamation: Глобальная переменная `App_Wb` переименована => `ThisWb`
+:exclamation: Глобальную переменную `App_Wb` переименовать => в `ThisWb`
 
 :fire: Модуль ***Statistics.bas***
 - :fire: Процедура `SpecificationSheets`: исправить маску "*ИНН*"; проверка нового поставщика, запреть ввод существующего имени; скрыть лист с настройками
@@ -16,9 +39,12 @@
 - :star: Свойство `Quit`: прятать "Параметры вставки" только для текущей книги
 - :star: Процедура `ErrCollection`: сообщение об исключении в формуле проверки данных
 
-:fire: Класс событий книги ***cExcelEvents.cls***
+:fire: Класс ***cExcelEvents.cls***
 - :fire: Процедура `App_WorkbookBeforeClose`: прятать "Параметры вставки" только для текущей книги
 - :fire: Процедура `App_WorkbookDeactivate`: переменная `CopyMode` контролирует скопированный диапазон ячеек; восстановить "Параметры вставки"
+
+:fire: Модуль ***AutoModuleRibbon.bas***
+- :fire: Процедура `SetFilter`: использовать активную ячейку вместо диапазона ячеек
 
 ### r360
 
@@ -39,7 +65,7 @@
 - :star: Свойство `Quit`: отображать *[Только для чтения]* в заголовке
 - :star: Процедура `ErrCollection`: сообщение об исключении в формуле условного форматирования
 
-:fire: Класс событий книги ***cExcelEvents.cls***
+:fire: Класс ***cExcelEvents.cls***
 - :fire: Процедура `App_SheetBeforeRightClick`: небольшие изменения из-за перестановки колонок (аналогично процедура `App_SheetSelectionChange`)
 - :star: Процедура `App_SheetChange`: удалить все символы, кроме натуральных чисел; автопростановка "*не оплач.*" в колонке "*Дата перечислений*"
 
@@ -52,7 +78,7 @@
 :star: Модуль ***Frame.bas***
 - :star: Процедура `ErrCollection`: сообщение о невозможности создания условного форматирования
 
-:fire: Класс событий книги ***cExcelEvents.cls***
+:fire: Класс ***cExcelEvents.cls***
 - :grey_question: Процедура `App_SheetChange`: *отдельно для каждого листа*
 - :star2: Процедура `App_SheetSelectionChange`: выполнить функцию `SetFormula`; добавить выпадающий список
 
@@ -62,7 +88,7 @@
 - :exclamation: Функция `CostChanged`: проверить изменения файла с ценами
 - :exclamation: Функция `CostUpdate`: пересчитать формулы для поставщика
 - :star: Процедура `Auto_Open`: цены "*Бухонлайн*" объединить с ценами "*Кодекс*"; добавить свойство `Quit`
-- :star: Процедура `SpecificationSheets`: небольшие изменения в форматировании ячеек
+- :fire: Процедура `SpecificationSheets`: небольшие изменения в форматировании ячеек
 - :star2: Процедура `RecordCells`: выполнить функцию `CostUpdate`; добавить свойство `Quit`
 - :grey_question: Функция `GetCosts`: переменную `OrgBody` вынести из параметров функции в локальную
 - :star2: Процедура `GetSuppRow`: удалить проверку с сообщением об исключении
@@ -85,7 +111,7 @@
 
 :exclamation: Модуль ***Statistics.bas***
 - :exclamation: Процедура `SendKeysCtrlV`: перехват клавиш <kbd>Ctrl+V</kbd>
-- :star: Процедура `SpecificationSheets`: небольшие изменения в форматировании ячеек
+- :fire: Процедура `SpecificationSheets`: небольшие изменения в форматировании ячеек
 - :star2: Процедура `Auto_Open`: проверка существования пути файла с ценами
 
 :exclamation: Модуль ***Frame.bas***
@@ -99,7 +125,7 @@
 
 :exclamation: Модуль ***AutoModuleRibbon.bas***
 - :exclamation: Процедура `GetVisibleMenu`: отображать рабочую вкладку меню только для текущей книги
-- :exclamation: Процедура `SetFilter`: управлять кнопками фильтров на вкладке меню; процедура `AddFilter` удалена
+- :exclamation: Процедура `SetFilter`: управлять кнопками фильтров на вкладке меню; удалить процедуру `AddFilter`
 
 ### r320
 
