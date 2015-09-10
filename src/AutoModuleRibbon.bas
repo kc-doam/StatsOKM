@@ -15,6 +15,12 @@ End Sub
 Private Sub GetEnabledMacro(ByVal control As IRibbonControl, ByRef Enabled)
   If ControlTag = "Enable" Then Enabled = True Else _
     Enabled = IIf(control.Tag Like ControlTag, True, False)
+  If control.Id = "__Costs" Then ' Кнопка «Цены» rev.390
+    With ActiveSheet
+      If Not (Len(.Cells(ActiveCell.Row, IIf(.CodeName Like "[OQS]?_", _
+        5, 10))) > 0 And ActiveCell.Row > 1) Then Enabled = False
+    End With
+  End If
 End Sub
 
 Private Sub GetVisibleMenu(ByVal control As IRibbonControl, ByRef Visible)
@@ -43,8 +49,9 @@ Private Sub RefreshRibbon(ByVal Tag As String) ' Не останавливать
   ControlTag = Tag
   If Rib Is Nothing Then
     MsgBox "Сохраните/Перезагрузите рабочую книгу " & vbCr & vbCr _
-      & "Справка: Возможное решение проблемы смотрите на странице: " & vbCr _
-      & "http://www.rondebruin.nl/win/section2.htm", vbCritical, "Ошибка"
+      & "Примечание: Возможное решение проблемы смотрите на странице: " & vbCr _
+      & "http://www.rondebruin.nl/win/section2.htm", vbCritical, _
+      "Непредвиденная ошибка Ribbon-меню" ' rev.390
   Else
     Rib.Invalidate
   End If
@@ -61,4 +68,26 @@ Private Sub SetFilter(ByRef control As IRibbonControl) ' rev.330
       End If
     End If: AutoOpenControls
   End With
+End Sub
+
+Private Sub ShowCosts(ByRef control As IRibbonControl) ' rev.390
+Dim Supplier As String, PartDate As Variant
+  With ActiveSheet
+    If .CodeName Like "[OQS]?_" Then
+      PartDate = .Cells(ActiveCell.Row, 6).FormulaR1C1
+      Supplier = .Cells(ActiveCell.Row, 5): CostUpdate Supplier
+      .Cells(PartNumRow, 2).NumberFormat = "@" ' Костыль
+    Else ' Исходные данные до ФИО = 15
+      If .CodeName = Set_arName Then SuppNumRow = ActiveCell.Row
+      PartDate = MultidimArr(.Cells(SuppNumRow, 1).Resize(, 15).Value, 1)
+      Supplier = PartDate(10)
+    End If: PartDate = GetDateAndCosts(.Name, PartDate)
+  End With
+  If IsArray(PartDate) Then
+    MsgBox "Цены '" & Supplier & "' с " & CDate(PartDate(1)) & vbCr _
+      & "Группы 0-2: " & PartDate(2) & " руб; " & PartDate(3) & " руб; " & PartDate(4) & " руб " _
+      & vbCr & "Актуализация: " & PartDate(5) & " руб " & vbCr _
+      & "НУМ-ы 0-2: " & PartDate(6) & " руб; " & PartDate(7) & " руб; " & PartDate(8) & " руб " _
+      & vbCr & "НАШ-и 1-2: " & PartDate(9) & " руб; " & PartDate(10) & " руб "
+  End If
 End Sub

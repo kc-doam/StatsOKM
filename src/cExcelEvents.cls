@@ -49,25 +49,12 @@ Cancel As Boolean) ' Close #1.1
     If ThisWb.FullName = Wb.FullName Then
       Cancel = ChangedBeforeSave(Wb.ActiveSheet) ' Отменить закрытие файла
       If Not Cancel And IsArray(SuppDiff) And SuppNumRow > 1 Then _
-        Set App = Nothing: RecordCells True ' ЗАПИСЬ
+        RecordCells True ' ЗАПИСЬ, Удалено 'Set App = Nothing' rev.390
       App_SheetActivate Wb.ActiveSheet ' Костыль
     End If: If Err Then ErrCollection Err.Number, 2, 16: Quit = 1 ' EPN = 2
 End Sub
 
-Private Sub App_WorkbookBeforeSave(ByVal Wb As Workbook, _
-ByVal SaveAsUI As Boolean, Cancel As Boolean) ' Close #1.2
-  On Error Resume Next ' SaveAsUI не работает, причина не известна
-    If ThisWb.FullName = Wb.FullName Then
-      Cancel = ChangedBeforeSave(Wb.ActiveSheet) ' Отменить сохранения файла
-      'Debug.Print Cancel; Len(cnfRenew): Stop
-      If Not Cancel And Len(cnfRenew) > 0 Then
-        If IsArray(SuppDiff) And SuppNumRow > 1 Then RecordCells True ' ЗАПИСЬ
-        'Count = 0: SpecificationSheets Wb.ActiveSheet.Index ' rev.380
-      End If
-    End If: If Err Then ErrCollection Err.Number, 2, 16: Quit = 1 ' EPN = 2
-End Sub
-
-Private Sub App_WorkbookDeactivate(ByVal Wb As Workbook) ' Close #1.3
+Private Sub App_WorkbookDeactivate(ByVal Wb As Workbook) ' Close #1.2
 Dim CopyMode As Boolean: CopyMode = App.CutCopyMode ' Буфер заполнен rev.370
   ' Отключено в rev.330
   On Error Resume Next ' Деактивация книги работает только в окне документа
@@ -83,6 +70,19 @@ Dim CopyMode As Boolean: CopyMode = App.CutCopyMode ' Буфер заполне�
       And IsArray(SuppDiff) And SuppNumRow > 1 Then
         RecordCells CheckSupplier
         ' см.App_SheetDeactivate - SuppDiff = Empty: ProtectSheet Wb.ActiveSheet
+      End If
+    End If: If Err Then ErrCollection Err.Number, 2, 16: Quit = 1 ' EPN = 2
+End Sub
+
+Private Sub App_WorkbookBeforeSave(ByVal Wb As Workbook, _
+ByVal SaveAsUI As Boolean, Cancel As Boolean) ' Close #1.3
+  On Error Resume Next ' SaveAsUI не работает, причина не известна
+    If ThisWb.FullName = Wb.FullName Then
+      Cancel = ChangedBeforeSave(Wb.ActiveSheet) ' Отменить сохранения файла
+      'Debug.Print Cancel; Len(cnfRenew): Stop
+      If Not Cancel And Len(cnfRenew) > 0 Then
+        If IsArray(SuppDiff) And SuppNumRow > 1 Then RecordCells True ' ЗАПИСЬ
+        'Count = 0: SpecificationSheets Wb.ActiveSheet.Index ' rev.380
       End If
     End If: If Err Then ErrCollection Err.Number, 2, 16: Quit = 1 ' EPN = 2
 End Sub
@@ -107,17 +107,18 @@ Private Sub App_SheetDeactivate(ByVal Sh As Object) ' #S Серый лист
 End Sub
 
 Private Sub App_SheetActivate(ByVal Sh As Object) ' #S Белый лист
-  If Sh.CodeName <> Set_spName And Sh.CodeName <> Set_arName Then _
+  If ActiveSheet.CodeName Like "[OQS]?_" Or Sh.CodeName = Set_arName Then _
     PartNumRow = ActiveCell.Row
-  If Sh.CodeName = Set_spName And IsEmpty(SuppDiff) Then
-    SuppNumRow = Selection.Row
+: SuppDiff = Empty ' rev.390
+  If ActiveSheet.CodeName = Set_spName And IsEmpty(SuppDiff) Then
+    Erase Get_Supp: SuppNumRow = Selection.Row ' rev.390
     ' Создаём массив с изменениями о поставщике rev.310
-    SuppDiff = MultidimArr(Sh.Cells(SuppNumRow, 1) _
+    SuppDiff = MultidimArr(ActiveSheet.Cells(SuppNumRow, 1) _
       .Resize(, 15).Value, 1) ' Исходные данные до ФИО = 15
   End If ': App.ScreenUpdating = True ' ВКЛ Обновление экрана
   Application.Cursor = xlDefault ' Восстановить Курсор «по умолчанию»
   'Clipboard_RangeAddress = Selection.address ' Для буфера - откл rev.370
-  If Len(cnfRenew) > 0 Then AutoOpenControls: cnfRenew = Sh.Name ' rev.330
+  If Len(cnfRenew) > 0 Then AutoOpenControls: cnfRenew = ActiveSheet.Name
 End Sub
 
 
@@ -129,10 +130,11 @@ ByVal Target As Range, Cancel As Boolean)
   And Target.Row > 1 Then
     With UnprotectSheet(ThisWb.Sheets(Sh_List(Set_arName)))
       .Activate: .Visible = xlSheetVisible
-      If Not IsEmpty(.Cells(1, 10)) Then .Range("A1:O4") _
+      If Not IsEmpty(.Cells(1, 10)) Then .Cells(1, 10).Select: .Range("A1:O4") _
         .AutoFilter Field:=10, Criteria1:=Sh.Cells(Target.Row, 10) _
-      Else Sh.Activate: Cancel = True ' Отменяем событие «Двойной клик»
+      Else Sh.Activate: Cancel = True ' rev.390 Отменяем событие "Двойной клик"
     End With: ProtectSheet ThisWb.Sheets(Sh_List(Set_arName))
+    ActiveWindow.ScrollRow = 1: ActiveWindow.ScrollColumn = 1 ' rev.390 CTRL+HOME
   End If
   Stop
   If Sh.CodeName Like "[OQS]?_" And Target.Locked Then _
@@ -169,18 +171,38 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal Target As Range)
           Sh.Cells(Target.Row, 20) = Sh.Cells(Target.Row, 12) _
         Else Sh.Cells(Target.Row, 20).ClearContents
       End If
-      ' 08/12/2014 Удаление всех символов, кроме цифр rev.370
-      If Sh.CodeName = "SF_" And Target.Column > 24 And Target.Column < 44 Then
+      ' 08/12/2014 Удаление всех символов, кроме цифр rev.390
+      If Sh.CodeName = "SF_" And Target.Column > 24 And Target.Column < 46 Then
         If Not IsArray(Target) And Not Target.HasFormula Then ' Если не массив
           Count = Replace(Val(Target.Value), "-", "")
           If Not Target = Count Then Target = Count
         End If
       End If
-      If App.CountA(Sh.Range(Sh.Cells(Target.Row, 29), _
-        Sh.Cells(Target.Row, 31))) > 2 And Sh.Cells(Target.Row, 32) < 1 Then _
+      If App.CountA(Sh.Range(Sh.Cells(Target.Row, 31), _
+        Sh.Cells(Target.Row, 33))) > 2 And Sh.Cells(Target.Row, 34) < 1 Then _
         If IsEmpty(Sh.Cells(Target.Row, 24)) Then Sh.Cells(Target.Row, 24) = _
-        "не оплач." ' Автопростановка "не оплач." rev.360
+        "не оплач." ' Автопростановка "не оплач." rev.390
     End If
+  End If
+  If ActiveSheet.CodeName Like "S[BF]_" And Target.Column = 29 Then  ' rev.390
+    With ThisWb.Sheets(Sh_List(IIf(Sh.CodeName = "SF_", "SB_", "SF_")))
+      Clipboard_RangeAddress = .Range("E1").End(xlDown).Offset(1, 0).address
+      If .Range(Clipboard_RangeAddress).AllowEdit And WorksheetFunction.Sum( _
+        Target.Offset(, -3).Resize(1, 4)) = Target.Offset(, -4) _
+      And Target > 0 Then
+        If MsgBox("Указано '" & Target & "' переходящих материала. " & vbCrLf _
+        & "Добавить новую партию? ", 260 + 48, "Добавление партии") = vbYes Then
+          Sh.Range("AC" & PartNumRow).Copy _
+            Destination:=.Cells(.Range(Clipboard_RangeAddress).Row, 25)
+          Sh.Range("E" & PartNumRow & ":G" & PartNumRow).Copy _
+            Destination:=.Range(Clipboard_RangeAddress)
+          Clipboard_RangeAddress = .Range("F1").End(xlDown).address
+          .Activate: .Range(Clipboard_RangeAddress).Select ' Костыль
+          .Cells(PartNumRow, 2).NumberFormat = "@" ' Костыль
+        End If
+      End If: If Not .Range(Clipboard_RangeAddress).AllowEdit Then _
+        ErrCollection 5, 3, 16, Clipboard_RangeAddress & " на листе '" & .Name
+    End With
   End If
 End Sub
 
@@ -206,8 +228,8 @@ Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
   End If
   
   If Sh.CodeName Like "[OQS]?_" And Target.Row > 1 Then
-    If (Target.Column = 5 Or Target.Column = 19 Or Target.Column = 48) _
-    And Not IsEmpty(Sh.Cells(Target.Row - 1, 5)) Then
+    If (Target.Column = 5 Or Target.Column = 19 Or Target.Column = 50) _
+    And Not IsEmpty(Sh.Cells(Target.Row - 1, 5)) Then ' rev.390
       ' And IsEmpty(Sh.Cells(Target.Row, 5)) ' ОШИБКА! В прошлых записях нет списка rev.330
       UnprotectSheet Sh ' Форма договора rev.310
       With Sh.Cells(Target.Row, 5).Validation
@@ -225,7 +247,7 @@ Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
         .IgnoreBlank = True: .InCellDropdown = True
         .Parent.Locked = False
       End With
-      With Sh.Cells(Target.Row, 48).Validation ' rev.350
+      With Sh.Cells(Target.Row, 50).Validation ' rev.390
         .Delete: .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
           Formula1:=Replace(Let_UrgencyTransList, "$", "Срочно ")
         .ErrorTitle = "Срочно"

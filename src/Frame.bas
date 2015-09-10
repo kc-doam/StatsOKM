@@ -28,13 +28,14 @@ Private Sub SendKeysCtrlV() ' Эмуляция нажатия клавиш «Ctr
     End With
 End Sub
 
-Property Let Quit(ByVal xlBlock As Boolean) ' вместо "End" rev.340
+Property Let Quit(ByVal xlBlock As Boolean) ' Вместо "End" rev.340
   With Application
+    .CommandBars("Cell").Reset ' rev.390
     If xlBlock Then
       UnprotectSheet(ThisWb.Sheets(GetSheetList(Set_spName))).Cells.Locked = True
       ProtectSheet ThisWb.Sheets(Sh_List(Set_spName))
       .CellDragAndDrop = True: .MoveAfterReturnDirection = xlDown
-      .DisplayPasteOptions = True: .CommandBars("Cell").Reset: End ' rev.370
+      .DisplayPasteOptions = True: End ' rev.390
     Else
       .CellDragAndDrop = False: .MoveAfterReturnDirection = xlToRight
       .DisplayPasteOptions = False ' rev.370
@@ -168,6 +169,8 @@ Dim Ask As Byte, Msg As String, Title As String:
       & "к специалисту по автоматизации. ": Title = "Внутренняя ошибка "
     Case 2008: Ask = 3: Msg = "На листе '" & Str & "' задан неизвестный пароль. "
     ' EPN = 3
+    Case 15: Msg = "Невозможно создать новую партию." & vbCrLf _
+      & "Заблокирована ячейка " & Str & "'. " & vbCrLf: Title = "Ошибка записи "
     Case 21: Msg = "Ошибка в формуле условного форматирования на листе '" _
       & Str & "'. ": Title = "Ошибка ввода данных " ' rev.360
     Case 273: Msg = "Невозможно применить сортировку к пустому фильтру " _
