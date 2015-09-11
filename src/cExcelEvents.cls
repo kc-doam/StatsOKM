@@ -63,10 +63,10 @@ Dim CopyMode As Boolean: CopyMode = App.CutCopyMode ' Буфер заполне�
       App.DisplayPasteOptions = True: App.CommandBars("Cell").Reset ' rev.370
       If CopyMode Then _
         ThisWb.Sheets(cnfRenew).Range(Clipboard_RangeAddress).Copy ' rev.370
-      'If GetSheetList(Set_spName) > 0 Then
-      '  Debug.Print Set_spName; " "; Wb.Sheets(Sh_List(Set_spName)).CodeName
-      '  Debug.Print Set_spName: Stop
-      If Wb.Sheets(GetSheetList(Set_spName)).Name = cnfRenew _
+      'If GetSheetList(SUPP) > 0 Then
+      '  Debug.Print SUPP; " "; Wb.Sheets(Sh_List(SUPP)).CodeName
+      '  Debug.Print SUPP: Stop
+      If Wb.Sheets(GetSheetList(SUPP)).Name = cnfRenew _
       And IsArray(SuppDiff) And SuppNumRow > 1 Then
         RecordCells CheckSupplier
         ' см.App_SheetDeactivate - SuppDiff = Empty: ProtectSheet Wb.ActiveSheet
@@ -82,7 +82,7 @@ ByVal SaveAsUI As Boolean, Cancel As Boolean) ' Close #1.3
       'Debug.Print Cancel; Len(cnfRenew): Stop
       If Not Cancel And Len(cnfRenew) > 0 Then
         If IsArray(SuppDiff) And SuppNumRow > 1 Then RecordCells True ' ЗАПИСЬ
-        'Count = 0: SpecificationSheets Wb.ActiveSheet.Index ' rev.380
+        Count = 0: SpecificationSheets Wb.ActiveSheet.Index ' rev.380
       End If
     End If: If Err Then ErrCollection Err.Number, 2, 16: Quit = 1 ' EPN = 2
 End Sub
@@ -92,7 +92,7 @@ Private Sub App_SheetDeactivate(ByVal Sh As Object) ' #S Серый лист
   'App.ScreenUpdating = False  ' ВЫКЛ Обновление экрана
   If Count < 0 And Not Sh.ProtectScenarios Then _
     Sh.Rows(Abs(Count)).Locked = True: Count = 0 ' Защита ячеек
-  If Sh.CodeName = Set_arName Then
+  If Sh.CodeName = ARCH Then
     On Error Resume Next
       App.ScreenUpdating = False: SortSupplier Sh, 10, 15 ' rev.360
       Sh.Visible = xlSheetHidden: App.ScreenUpdating = True ' СКРЫТЬ
@@ -100,47 +100,50 @@ Private Sub App_SheetDeactivate(ByVal Sh As Object) ' #S Серый лист
     On Error GoTo 0
   End If
   ''Stop: Debug.Print SuppNumRow; Selection.Row
-  If Sh.CodeName = Set_spName And IsArray(SuppDiff) _
+  If Sh.CodeName = SUPP And IsArray(SuppDiff) _
   And SuppNumRow > 1 Then RecordCells CheckSupplier
   ' Нельзя применять ProtectSheet Sh - стирается буфер
   ' Нельзя применять SuppDiff = Empty - возникает ошибка
 End Sub
 
 Private Sub App_SheetActivate(ByVal Sh As Object) ' #S Белый лист
-  If ActiveSheet.CodeName Like "[OQS]?_" Or Sh.CodeName = Set_arName Then _
-    PartNumRow = ActiveCell.Row
-: SuppDiff = Empty ' rev.390
-  If ActiveSheet.CodeName = Set_spName And IsEmpty(SuppDiff) Then
-    Erase Get_Supp: SuppNumRow = Selection.Row ' rev.390
-    ' Создаём массив с изменениями о поставщике rev.310
-    SuppDiff = MultidimArr(ActiveSheet.Cells(SuppNumRow, 1) _
-      .Resize(, 15).Value, 1) ' Исходные данные до ФИО = 15
-  End If ': App.ScreenUpdating = True ' ВКЛ Обновление экрана
-  Application.Cursor = xlDefault ' Восстановить Курсор «по умолчанию»
-  'Clipboard_RangeAddress = Selection.address ' Для буфера - откл rev.370
-  If Len(cnfRenew) > 0 Then AutoOpenControls: cnfRenew = ActiveSheet.Name
+  With ActiveSheet
+    If .CodeName Like SHEETS_ALL Or .CodeName = ARCH Then _
+      PartNumRow = ActiveCell.Row: SuppDiff = Empty ' rev.400
+    If .CodeName = SUPP And IsEmpty(SuppDiff) Then
+      Erase Get_Supp: SuppNumRow = Selection.Row ' rev.390
+      ' Создаём массив с изменениями о поставщике (до ФИО = 15) rev.310
+      SuppDiff = MultidimArr(.Cells(SuppNumRow, 1).Resize(, 15).Value, 1)
+    End If ': App.ScreenUpdating = True ' ВКЛ Обновление экрана
+    App.Cursor = xlDefault ' Восстановить Курсор «по умолчанию»
+    'Clipboard_RangeAddress = Selection.address ' Для буфера - откл rev.370
+    If Len(cnfRenew) > 0 Then AutoOpenControls: cnfRenew = .Name
+  End With
 End Sub
 
 
 
 Private Sub App_SheetBeforeDoubleClick(ByVal Sh As Object, _
 ByVal Target As Range, Cancel As Boolean)
-  App.ScreenUpdating = False ' ВЫКЛ Обновление экрана
-  If Sh.CodeName = Set_spName And Not IsEmpty(Sh.Cells(Target.Row, 10)) _
-  And Target.Row > 1 Then
-    With UnprotectSheet(ThisWb.Sheets(Sh_List(Set_arName)))
+  'App.ScreenUpdating = False ' ВЫКЛ Обновление экрана
+  If Sh.CodeName = SUPP And Not IsEmpty(Sh.Cells(Target.Row, 10)) _
+  And Target.Row > 1 And Target.Column <= 15 Then ' rev.400
+    With UnprotectSheet(ThisWb.Sheets(Sh_List(ARCH)))
       .Activate: .Visible = xlSheetVisible
-      If Not IsEmpty(.Cells(1, 10)) Then .Cells(1, 10).Select: .Range("A1:O4") _
-        .AutoFilter Field:=10, Criteria1:=Sh.Cells(Target.Row, 10) _
-      Else Sh.Activate: Cancel = True ' rev.390 Отменяем событие "Двойной клик"
-    End With: ProtectSheet ThisWb.Sheets(Sh_List(Set_arName))
-    ActiveWindow.ScrollRow = 1: ActiveWindow.ScrollColumn = 1 ' rev.390 CTRL+HOME
+      If ActiveSheet.CodeName = .CodeName And Not IsEmpty(.Cells(1, 10)) Then
+        .Cells(1, 10).Select
+        .Range("A1:O4").AutoFilter Field:=10, Criteria1:=Sh.Cells(Target.Row, 10)
+        ActiveWindow.ScrollRow = 1: ActiveWindow.ScrollColumn = 1 ' CTRL+HOME
+      Else
+        Sh.Activate: Cancel = True ' Отменяем событие "Двойной клик"
+      End If
+    End With: ProtectSheet ThisWb.Sheets(Sh_List(ARCH))
   End If
   Stop
-  If Sh.CodeName Like "[OQS]?_" And Target.Locked Then _
+  If Sh.CodeName Like SHEETS_ALL And Target.Locked Then _
     Cancel = True: SendKeys "{F2}", False ' rev.250 Фокус должен быть на MS Excel
     'If Target.AllowEdit Then MsgBox ' ЗАМЕНИТЬ! rev.370
-  App.ScreenUpdating = True ' ВКЛ Обновление экрана
+  'App.ScreenUpdating = True ' ВКЛ Обновление экрана
 End Sub
 
 Private Sub App_SheetBeforeRightClick(ByVal Sh As Object, _
@@ -151,7 +154,7 @@ ByVal Target As Range, Cancel As Boolean)
     And Sh.Cells.Columns.Count = Target.Cells.CountLarge Then
       Count = -1 * Target.Row
       ' Если «Разрешено включать» = Пусто, то разблокировать строку
-      If (Sh.CodeName = Set_spName And (IsEmpty(Sh.Cells(Target.Row, 10)) _
+      If (Sh.CodeName = SUPP And (IsEmpty(Sh.Cells(Target.Row, 10)) _
         Or IsEmpty(Sh.Cells(Target.Row, 15)))) _
       Or (Sh.CodeName = "SF_" And IsEmpty(Sh.Cells(Target.Row, 18))) _
       Or (Sh.CodeName = "SB_" And IsEmpty(Sh.Cells(Target.Row, 18))) Then _
@@ -164,7 +167,7 @@ End Sub
 Private Sub App_SheetChange(ByVal Sh As Object, ByVal Target As Range)
 '  Debug.Print "+ Row ="; Target.Row; " Column ="; Target.Column
   If Target.Worksheet.CodeName = Sh.CodeName Then ' Если лист тот же
-    If Sh.CodeName Like "[OQS]?_" And Target.Row > 1 Then
+    If Sh.CodeName Like SHEETS_ALL And Target.Row > 1 Then
       ' 18/04/2014 Автопростановка "Разрешено включать" по оперативному договору
       If Not IsEmpty(Sh.Cells(Target.Row, 8)) And Target.Column = 19 Then
         If Sh.Cells(Target.Row, Target.Column) = "опер." Then _
@@ -184,14 +187,19 @@ Private Sub App_SheetChange(ByVal Sh As Object, ByVal Target As Range)
         "не оплач." ' Автопростановка "не оплач." rev.390
     End If
   End If
-  If ActiveSheet.CodeName Like "S[BF]_" And Target.Column = 29 Then  ' rev.390
+  If ActiveSheet.CodeName Like "S[BF]_" And Target.Column = 29 Then ' rev.400
     With ThisWb.Sheets(Sh_List(IIf(Sh.CodeName = "SF_", "SB_", "SF_")))
-      Clipboard_RangeAddress = .Range("E1").End(xlDown).Offset(1, 0).address
+      If Len(.Range("E2")) > 0 Then Clipboard_RangeAddress = .Range("E1") _
+        .End(xlDown).Offset(1, 0).address Else Clipboard_RangeAddress = "$E$2"
       If .Range(Clipboard_RangeAddress).AllowEdit And WorksheetFunction.Sum( _
         Target.Offset(, -3).Resize(1, 4)) = Target.Offset(, -4) _
       And Target > 0 Then
-        If MsgBox("Указано '" & Target & "' переходящих материала. " & vbCrLf _
-        & "Добавить новую партию? ", 260 + 48, "Добавление партии") = vbYes Then
+        If MsgBox("Указано '" & Target & "' переходящих материала в " _
+          & IIf(.CodeName = "SF_", "КФ", "БО") & ". " & vbCrLf _
+          & "Добавить новую партию в " & IIf(.CodeName = "SF_", "КФ", "БО") _
+          & "? ", 260 + 48, "Добавление партии") = vbYes Then ' rev.400
+          Sh.Range("AX" & PartNumRow).Copy _
+            Destination:=.Cells(.Range(Clipboard_RangeAddress).Row, 50)
           Sh.Range("AC" & PartNumRow).Copy _
             Destination:=.Cells(.Range(Clipboard_RangeAddress).Row, 25)
           Sh.Range("E" & PartNumRow & ":G" & PartNumRow).Copy _
@@ -209,16 +217,16 @@ End Sub
 Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
 'Dim cell As Range ' Не работает при выборе из списка
   If Count < 0 Then Sh.Rows(Abs(Count)).Locked = True: Count = 0 ' Защита ячеек
-  If Sh.CodeName = Set_spName And Target.Column = 15 Then Exit Sub ' rev.360
+  If Sh.CodeName = SUPP And Target.Column = 15 Then Exit Sub ' rev.360
   
   'Application.ScreenUpdating = False ' ВЫКЛ Обновление экрана
-  If Sh.CodeName = Set_spName And SuppNumRow <> Target.Row Then
+  If Sh.CodeName = SUPP And SuppNumRow <> Target.Row Then
     If IsArray(SuppDiff) And SuppNumRow > 1 Then RecordCells CheckSupplier
     ' Создаём массив с изменениями о поставщике rev.310
     If Not SuppNumRow = Selection.Row Then SuppDiff = Empty
     App_SheetActivate Sh ' Костыль
   End If
-  If Sh.CodeName = Set_spName And Target.Row > 1 Then ' rev.360
+  If Sh.CodeName = SUPP And Target.Row > 1 Then ' rev.360
     If Target.Column = 11 And Not IsEmpty(Sh.Cells(Target.Row, 10)) Then _
       UnprotectSheet Sh: ListCost Sh, Target.Row: ProtectSheet Sh
     'Debug.Print SuppNumRow; " "; Selection.Row
@@ -227,21 +235,21 @@ Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
     'App_SheetActivate Sh ' Костыль
   End If
   
-  If Sh.CodeName Like "[OQS]?_" And Target.Row > 1 Then
+  If Sh.CodeName Like SHEETS_ALL And Target.Row > 1 Then
     If (Target.Column = 5 Or Target.Column = 19 Or Target.Column = 50) _
     And Not IsEmpty(Sh.Cells(Target.Row - 1, 5)) Then ' rev.390
       ' And IsEmpty(Sh.Cells(Target.Row, 5)) ' ОШИБКА! В прошлых записях нет списка rev.330
       UnprotectSheet Sh ' Форма договора rev.310
       With Sh.Cells(Target.Row, 5).Validation
         .Delete: .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-          Formula1:="=" & Let_SuppList ' Добавляем список в ячейку
+          Formula1:="=" & SUPP_LIST  ' Добавляем список в ячейку
         .ErrorTitle = "Поставщик (кратко)"
         .ErrorMessage = "Необходимо выбрать значение из списка "
         .ShowError = True: .IgnoreBlank = True
       End With
       With Sh.Cells(Target.Row, 19).Validation
         .Delete: .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-          Formula1:=Let_ContrFormList
+          Formula1:=CONTROFORM_LIST
         .ErrorTitle = "Форма договора"
         .ErrorMessage = "Необходимо выбрать значение из списка "
         .IgnoreBlank = True: .InCellDropdown = True
@@ -249,7 +257,7 @@ Private Sub App_SheetSelectionChange(ByVal Sh As Object, ByVal Target As Range)
       End With
       With Sh.Cells(Target.Row, 50).Validation ' rev.390
         .Delete: .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, _
-          Formula1:=Replace(Let_UrgencyTransList, "$", "Срочно ")
+          Formula1:=Replace(EXTRA_LIST, "$", "Срочно ")
         .ErrorTitle = "Срочно"
         .ErrorMessage = "Необходимо выбрать значение из списка "
         .IgnoreBlank = True: .InCellDropdown = True

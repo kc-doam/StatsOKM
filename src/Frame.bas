@@ -32,38 +32,54 @@ Property Let Quit(ByVal xlBlock As Boolean) ' Вместо "End" rev.340
   With Application
     .CommandBars("Cell").Reset ' rev.390
     If xlBlock Then
-      UnprotectSheet(ThisWb.Sheets(GetSheetList(Set_spName))).Cells.Locked = True
-      ProtectSheet ThisWb.Sheets(Sh_List(Set_spName))
+      UnprotectSheet(ThisWb.Sheets(GetSheetList(SUPP))).Cells.Locked = True
+      ProtectSheet ThisWb.Sheets(Sh_List(SUPP))
       .CellDragAndDrop = True: .MoveAfterReturnDirection = xlDown
       .DisplayPasteOptions = True: End ' rev.390
     Else
       .CellDragAndDrop = False: .MoveAfterReturnDirection = xlToRight
       .DisplayPasteOptions = False ' rev.370
-      ActiveWindow.Caption = ActiveWorkbook.Name & " (rev." & revFile & ")" _
+      ActiveWindow.Caption = ActiveWorkbook.Name & " (rev." & REV & ")" _
         & IIf(ActiveWorkbook.ReadOnly, "  [Только для чтения]", "") ' rev.360
+      If .WindowState <> xlMaximized Then .WindowState = xlMaximized ' rev.400
     End If
   End With
 End Property
 
 ' Загрузка данных с настройками
-Public Sub SettingsStatistics(ByRef Settings As Collection) ' rev.300
-Dim iND As Object, Bank As String, SubBank As String
-Const Let_accPath = "X:\Avtor_M\#Finansist\YCHET" ' Директория «YCHET» rev.330
+Public Sub SettingsStatistics(ByRef Settings As Collection) ' rev.400
+Dim K_List As New Collection, iND As Object, bank As String, suffix As String
+Const ACC_PATH = "X:\Avtor_M\#Finansist\YCHET" ' Директория «YCHET» rev.330
   ' ВАЖНО! Обновление списка с Индексами листов
-  If GetSheetList(Set_cnfName) < 1 Then ErrCollection 1001, 1, 16 ' EPN = 1
-'  Worksheets(Sh_List(Set_cnfName)).Visible = xlSheetVeryHidden ' СКРЫТЬ rev.330
+  If GetSheetList(CONF) < 1 Then ErrCollection 1001, 1, 16 ' EPN = 1
+  Worksheets(Sh_List(CONF)).Visible = xlSheetVeryHidden ' СКРЫТЬ rev.330
   RemoveCollection Settings: Settings.Add DateSerial(2009, 1, 1), "date0"
   ' Из листа «Настройки»
-  For Each iND In ThisWb.Sheets(Sh_List(Set_cnfName)).NameS
+  For Each iND In ThisWb.NameS
     With iND
-      Bank = Left(.Name, InStr(.Name, "_")): SubBank = Mid(.Name, Len(Bank) + 1)
-      If Not .Value Like "*[#]*" Then
-        If Bank Like "*!" & Set_cnfName And .RefersToRange.Count = 1 Then _
-          Settings.Add CStr(.RefersToRange.Value), SubBank
-      Else: ErrCollection 57, 1, 16, "'" & .Name & "'": End If ' EPN = 1
-    End With
-  Next iND: Settings.Add IIf(Len(Dir(Let_accPath, vbDirectory)) > 0, _
-    Let_accPath, ActiveWorkbook.Path), "SetPath" ' rev.330
+      On Error Resume Next
+      ' Предполагается наличие .Name = Список поставщиков, чтобы сохранить SUPP_
+      bank = Left(.Name, InStr(.Name, "_")): suffix = Mid(.Name, Len(bank) + 1)
+      If K_List("key") <> bank Then ' Коллекция с индексами листов
+        Settings.Add K_List, K_List("key"): Set K_List = Nothing
+      End If
+      If .RefersToRange.Count = 1 Then
+        'If .Value Like "*[#]*" Then ' Если «Ссылка» битая
+        If Len(bank) > 2 And .Value Like "*[#]*" Then ' Если «Ссылка» битая
+          .Visible = True: ErrCollection 57, 1, 16, "'" & .Name & "'" ' EPN = 1
+        ElseIf bank Like "*!" & CONF Then
+          Settings.Add CStr(.RefersToRange.Value), suffix
+        ' Если появляется Банки: ПЗ, А, ПВ, СВ, АП, БО, КФ, ЮВО, ОПФ
+        ElseIf bank Like SHEETS_ALL Or bank = SUPP Then ' Если Банк ...
+          If K_List.Count < 1 Then ' ... смотрим, является ли Банк «новым»
+            ' Вписываем Имя листа, на котором он находится «новый» Банк
+            K_List.Add bank, "key": K_List.Add .RefersToRange.Row, "head"
+          End If: K_List.Add .RefersToRange.Column, suffix
+        End If
+      End If
+    End With: Err.Clear
+  Next iND: Settings.Add IIf(Len(Dir(ACC_PATH, vbDirectory)) > 0, _
+    ACC_PATH, ActiveWorkbook.Path), "SetPath" ' rev.330
 End Sub
 
 ' Обновление списка Индексов листов
@@ -137,7 +153,8 @@ End Function
 ' Указания для пользователя при возникновении ошибки
 Public Sub ErrCollection(ByVal ErrNumber As Long, ByVal ErrPartNum As Byte, _
 ByVal Icon As Byte, Optional ByVal Str As String)
-Dim Ask As Byte, Msg As String, Title As String:
+Dim Ask As Byte, Msg As String, Title As String
+' https://support.microsoft.com/ru-ru/kb/146864
   Ask = 1: Title = "Ошибка чтения " ' По умолчанию
   Select Case ErrNumber * ErrPartNum ' Номер ошибки * EPN (ErrPartNum)
     ' EPN = 1
@@ -146,12 +163,13 @@ Dim Ask As Byte, Msg As String, Title As String:
     Case 20: Ask = 0: Msg = "У поставщика '" & Str & "' изменились основные " _
       & "данные. " & vbCrLf & "Перед сохранением необходимо изменить поле " _
       & "'Дата актуальности'. " & vbCrLf: Title = "Ошибка ввода данных "
-    Case 30: Ask = 2: Msg = "Внимание! Обновился файл с ценами. ": Title = _
+    Case 30: Ask = 2: Msg = "Внимание! Обновился файл ЦЕНЫ. ": Title = _
       "Требуется обновление "
     ' В данной версии нет предупреждения «Дата поступления» с пустым поставщиком
     Case 40: If Str Like "*''*" Then _
       Ask = 5: Msg = "Не указан поставщик " & Mid(Str, 19) & ". ": Icon = 64 _
       Else: Ask = 4: Msg = "Не найдены цены " & Str & ". " ' rev.340
+    Case 50: Msg = "В файле ЦЕНЫ не заполнена таблица '" & Str & "'. " ' rev.400
     Case 57: Msg = "В настройках " & Str & " обнаружена битая ссылка. "
     Case 59: Msg = "Файл '" & Str & "' не найден! " _
       & "Работа с данными невозможна!": Title = "Ошибка открытия файла "
