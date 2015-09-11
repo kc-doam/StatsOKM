@@ -27,9 +27,9 @@
 	$ git config --global filter.win1251.required true
 	```
 
-4. Выполнить, чтобы Git всегда создавал новый объект Commit при слиянии. Информация о существующей ветке не потеряется.
+4. Установить флаг `--no-ff`, чтобы Git всегда создавал новый объект Commit при слиянии. Информация о существующей ветке не потеряется.
 	```bash
-	$ git config --global core.mergeoptions "--no-ff"
+	$ git config --global merge.ff false
 	```
 
 5. Теперь можно работать с файлами через Git Bash или Git Client не заботясь о кодировке.
