@@ -1,7 +1,7 @@
 Attribute VB_Name = "Frame"
 Option Explicit
 Option Base 1
-'Option Private Module ' rev.340
+Option Private Module ' rev.340
 '12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
 
 Private Counter As Integer ' Счётчик
@@ -30,9 +30,10 @@ End Sub
 
 Property Let Quit(ByVal xlBlock As Boolean) ' Вместо "End" rev.340
   With Application
-    .CommandBars("Cell").Reset ' rev.390
+    .CommandBars("Cell").Reset: .CommandBars("Row").Reset ' rev.410
     If xlBlock Then
-      UnprotectSheet(ThisWb.Sheets(GetSheetList(SUPP))).Cells.Locked = True
+      UnprotectSheet(ThisWb.Sheets(GetSheetIndex(SUPP))) _
+        .Cells.Locked = True
       ProtectSheet ThisWb.Sheets(Sh_List(SUPP))
       .CellDragAndDrop = True: .MoveAfterReturnDirection = xlDown
       .DisplayPasteOptions = True: End ' rev.390
@@ -46,57 +47,64 @@ Property Let Quit(ByVal xlBlock As Boolean) ' Вместо "End" rev.340
   End With
 End Property
 
-' Загрузка данных с настройками
-Public Sub SettingsStatistics(ByRef Settings As Collection) ' rev.400
-Dim K_List As New Collection, iND As Object, bank As String, suffix As String
+' Загрузка данных с настройками ' rev.300
+Public Sub SettingsStatistics(ByRef Cost As Collection) ' rev.410
+Dim N_List As New Collection, iND As Object, bank As String, suffix As String
 Const ACC_PATH = "X:\Avtor_M\#Finansist\YCHET" ' Директория «YCHET» rev.330
   ' ВАЖНО! Обновление списка с Индексами листов
-  If GetSheetList(CONF) < 1 Then ErrCollection 1001, 1, 16 ' EPN = 1
-  Worksheets(Sh_List(CONF)).Visible = xlSheetVeryHidden ' СКРЫТЬ rev.330
-  RemoveCollection Settings: Settings.Add DateSerial(2009, 1, 1), "date0"
-  ' Из листа «Настройки»
-  For Each iND In ThisWb.NameS
+  If GetSheetIndex(CONF) < 1 Then ErrCollection 1001, 1, 16 ' EPN = 1
+'  Worksheets(Sh_List(CONF)).Visible = xlSheetVeryHidden ' СКРЫТЬ rev.330
+  RemoveCollection Cost: RemoveCollection Settings ' rev.410
+  Settings.Add DateSerial(2009, 1, 1), "date0"
+  On Error Resume Next
+    For Each iND In ThisWb.NameS
     With iND
-      On Error Resume Next
-      ' Предполагается наличие .Name = Список поставщиков, чтобы сохранить SUPP_
-      bank = Left(.Name, InStr(.Name, "_")): suffix = Mid(.Name, Len(bank) + 1)
-      If K_List("key") <> bank Then ' Коллекция с индексами листов
-        Settings.Add K_List, K_List("key"): Set K_List = Nothing
-      End If
-      If .RefersToRange.Count = 1 Then
-        'If .Value Like "*[#]*" Then ' Если «Ссылка» битая
-        If Len(bank) > 2 And .Value Like "*[#]*" Then ' Если «Ссылка» битая
-          .Visible = True: ErrCollection 57, 1, 16, "'" & .Name & "'" ' EPN = 1
-        ElseIf bank Like "*!" & CONF Then
-          Settings.Add CStr(.RefersToRange.Value), suffix
-        ' Если появляется Банки: ПЗ, А, ПВ, СВ, АП, БО, КФ, ЮВО, ОПФ
-        ElseIf bank Like SHEETS_ALL Or bank = SUPP Then ' Если Банк ...
-          If K_List.Count < 1 Then ' ... смотрим, является ли Банк «новым»
-            ' Вписываем Имя листа, на котором он находится «новый» Банк
-            K_List.Add bank, "key": K_List.Add .RefersToRange.Row, "head"
-          End If: K_List.Add .RefersToRange.Column, suffix
+        bank = Left(.Name, InStr(.Name, "_")): suffix = Mid(.Name, Len(bank) + 1)
+        ' Внутренние диапазоны
+        If .Name Like "_xl*" Then Debug.Print "Системный диапазон "; .Name
+        ' Необходимо наличие .Name = Список_поставщиков, чтобы сохранить N_List
+        If N_List("key") <> bank Then ' Если Коллекция на листе закончилась
+          Settings.Add N_List, N_List("key"): Set N_List = Nothing ' Записать
         End If
-      End If
-    End With: Err.Clear
-  Next iND: Settings.Add IIf(Len(Dir(ACC_PATH, vbDirectory)) > 0, _
-    ACC_PATH, ActiveWorkbook.Path), "SetPath" ' rev.330
+        If .RefersToRange.Count = 1 Then
+          If Len(bank) > 2 And .Value Like "*[#]*" Then ' Если «Ссылка» битая
+            .Visible = True: ErrCollection 57, 1, 16, "'" & .Name & "'" ' EPN = 1
+          ElseIf bank Like "*!" & CONF Then ' Если лист "Настройки"
+            Settings.Add CStr(.RefersToRange.Value), suffix
+          ' Если появляется Банки: ПЗ, А, ПВ, СВ, АП, БО, КФ, ЮВО, ОПФ
+          ElseIf bank Like SHEETS_ALL Or bank = SUPP Then ' Если Банк ...
+            If N_List.Count < 1 Then ' ... смотрим, является ли Банк «новым»
+            ' Вписываем Имя листа, на котором он находится «новый» Банк
+              N_List.Add bank, "key": N_List.Add .RefersToRange.Row, "head"
+            End If: N_List.Add .RefersToRange.Column, suffix
+          End If
+        End If: If .Name = SUPP_LIST Then .Delete ' rev.410
+      End With: Err.Clear
+    Next iND: Settings.Add IIf(Len(Dir(ACC_PATH, vbDirectory)) > 0, _
+      ACC_PATH, ThisWb.Path), "SetPath" ' rev.410
+    
+    bank = ThisWb.Sheets(Sh_List(SUPP)).Name ' rev.410
+    With ThisWb.NameS.Add(Name:=SUPP_LIST, RefersTo:="=$E$1") ' rev.410
+      .Comment = "Список листа Поставщики": .RefersTo = "=OFFSET('" _
+        & bank & "'!$J$1,1,,COUNTA('" & bank & "'!$J:$J)-1,)"
+    End With
 End Sub
 
-' Обновление списка Индексов листов
-Public Function GetSheetList(ByVal FindCodeNameSheet As String) As Byte ' rev.300
+' Обновление списка Индексов листов rev.300
+Public Function GetSheetIndex(ByVal CodeNameSheet As String) As Byte
 Dim App_Sh As Worksheet: RemoveCollection Sh_List
-  If ThisWb Is Nothing Then Set ThisWb = ActiveWorkbook ' Приложение rev.380
+  If ThisWb Is Nothing Then Set ThisWb = ThisWorkbook ' rev.410
   'If XLApp Is Nothing Then Set XLApp = New cExcelEvents ' Модуль rev.380
   On Error Resume Next
     For Each App_Sh In ThisWb.Sheets
       Sh_List.Add CByte(App_Sh.Index), App_Sh.CodeName ' Индекс в список rev.380
-      If App_Sh.CodeName = FindCodeNameSheet _
-      Or App_Sh.Name = FindCodeNameSheet Then GetSheetList = App_Sh.Index
+      If App_Sh.CodeName = CodeNameSheet Or App_Sh.Name = CodeNameSheet Then _
+        GetSheetIndex = App_Sh.Index
     Next App_Sh
     If Err Then ErrCollection Err.Number, 2, 16: Quit = True ' EPN = 2
 End Function
 
-Public Sub ProtectSheet(ByRef Sh As Worksheet) ' Защитить лист
+Public Sub ProtectSheet(ByRef Sh As Worksheet) ' Защитить лист rev.300
   On Error Resume Next
     Sh.EnableOutlining = True ' ЗАГРУЗКА: Группировка на защищённом листе
     Sh.Protect Password:=Settings("CostPass"), UserInterfaceOnly:=True, _
@@ -105,7 +113,7 @@ Public Sub ProtectSheet(ByRef Sh As Worksheet) ' Защитить лист
     If Err Then ErrCollection Err.Number, 2, 16, Sh.Name ' EPN = 2
 End Sub
 
-' Снять защиту с листа (не использовать ScreenUpdating)
+' Снять защиту с листа (не использовать ScreenUpdating) rev.300
 Public Function UnprotectSheet(ByRef Sh As Worksheet) As Worksheet
   On Error Resume Next
     If Sh.ProtectScenarios Then Sh.Unprotect Settings("CostPass")
@@ -113,8 +121,8 @@ Public Function UnprotectSheet(ByRef Sh As Worksheet) As Worksheet
     If Err Then ErrCollection Err.Number, 2, 16, Sh.Name ' EPN = 2
 End Function
 
-Public Sub SortSupplier(ByRef Sh As Worksheet, _
-ByVal FirstKey As Byte, Optional ByVal SecondKey As Byte)
+Public Sub SortSupplier(ByRef Sh As Worksheet, ByVal FirstKey As Byte, _
+Optional ByVal SecondKey As Byte) ' rev.300
 Dim LastRow As Long: LastRow = Sh.UsedRange.Rows.Count + 1 ' Последняя строка
   If Not Sh.AutoFilterMode Then Sh.Cells(1, FirstKey).AutoFilter
   With Sh.AutoFilter.Sort
@@ -158,11 +166,14 @@ Dim Ask As Byte, Msg As String, Title As String
   Ask = 1: Title = "Ошибка чтения " ' По умолчанию
   Select Case ErrNumber * ErrPartNum ' Номер ошибки * EPN (ErrPartNum)
     ' EPN = 1
+    'Case -2147217908, -2147217900: Msg = "Невозможно выполнить " _
+      & IIf(ErrNumber Like "*908", "пустой ", "") & "запрос к базе данных. " _
+      & "Восстановите резервную копию файла " & vbCrLf & Str ' Проверьте цены
     Case -2147217843: Msg = "Неверный пароль базы данных. " _
       & "Восстановите резервную копию файла " & vbCrLf & Str
-    Case 20: Ask = 0: Msg = "У поставщика '" & Str & "' изменились основные " _
-      & "данные. " & vbCrLf & "Перед сохранением необходимо изменить поле " _
-      & "'Дата актуальности'. " & vbCrLf: Title = "Ошибка ввода данных "
+    Case 20: Ask = 0: Msg = "У поставщика '" & Str & "' изменились основные да" _
+      & "нные. " & vbCrLf & "Перед сохранением необходимо изменить поле 'Дата " _
+      & "актуальности'. " & vbCrLf: Icon = 48: Title = "Ошибка ввода данных "
     Case 30: Ask = 2: Msg = "Внимание! Обновился файл ЦЕНЫ. ": Title = _
       "Требуется обновление "
     ' В данной версии нет предупреждения «Дата поступления» с пустым поставщиком
@@ -177,13 +188,14 @@ Dim Ask As Byte, Msg As String, Title As String
       & "'. Работа с данными невозможна! "
     Case 1001: Ask = 3: Msg = "Лист 'Настройки' не найден! " _
       & "Работа с данными невозможна! "
+    Case 3704: Msg = "Не найдена таблица '" & Str & " стандарт' в файле ЦЕНЫ. "
     ' EPN = 2
     Case 10: Ask = 2: Msg = IIf(Len(Str), "Невозможно снять защиту с листа '" _
       & Str & "'. ", "Лист не защищён. ") & "Коллекция 'Settings' is Nothing! "
     Case 182, 184: Ask = 0: Msg = "Значение переменной 'ThisWb' is Nothing! " _
       & "Работа с данными невозможна! " & vbCrLf & IIf(ErrNumber = 92, "Необ" _
-      & "ходимо сохранить файл '" & Windows(1).Caption & "' и открыть заново. " _
-      & vbCr & vbCrLf & "При частом появлении ошибки о", "О") & "братитесь " _
+      & "ходимо закрыть файл '" & Windows(1).Caption & "' и открыть заново. " _
+      & String(2, vbCr) & "При частом появлении ошибки о", "О") & "братитесь " _
       & "к специалисту по автоматизации. ": Title = "Внутренняя ошибка "
     Case 2008: Ask = 3: Msg = "На листе '" & Str & "' задан неизвестный пароль. "
     ' EPN = 3
