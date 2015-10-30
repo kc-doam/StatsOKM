@@ -3,12 +3,12 @@ Option Explicit
 Option Base 1
 '12345678901234567890123456789012345bopoh13@ya67890123456789012345678901234567890
 
-Public Const SUPP_LIST = "Список_Поставщиков", REV As Integer = &H19A
+Public Const SUPP_LIST = "Список_Поставщиков", REV As Integer = &H1A4
 ' Внутреннее имя листа «Настройки», Внутреннее имя листа «Архив» и «Поставщики»
 Public Const CONF = "CONF_", ARCH = "ARCH_", SUPP = "SUPP_"
 Public Const PARTNEROFORM_LIST = "На входе,После проверки", _
-  PARTYTYPE_LIST = "Исходная,Доработка", EXTRA_LIST = _
-  "$Новое,$Согл. вопросы,$Наши вопросы,$Доработка,$Иное" ' rev.410
+  PARTYTYPE_LIST = "Исходная,Доработка", EXTRA_LIST = "$Новое,$Новое" _
+  & " +Наши вопр.,$Согл. вопросы,$Наши вопросы,$Доработка,$Иное" ' rev.420
 Public Const CONTROFORM_LIST = "станд.,опер.", SHEETS_ALL = "[OQS]?_"
 Private Const PERSON_LIST = "Ф/Л,Ю/Л" ' Не менять! "*/Л,Ф/Л,Ю/Л"
 
@@ -104,7 +104,6 @@ Const COST_PATH = "\Архив\Cost.accdb" ' Цены
   
   With ThisWb ' Активация, только если другой лист активен
     .Sheets(Sh_List("SF_")).Activate ' ВАЖНО! Уйти с листа «Поставщики»"
-    'If CostChanged Then CostUpdate ' rev.340 - Перенесено в "Белый лист" rev.410
     For Each Conn In .Sheets
       If Conn.CodeName = CONF And Not IsEmpty(SuppDiff) _
       And Not .ReadOnly Then Settings.Remove "CostDate": Settings.Add SuppDiff, _
@@ -116,7 +115,7 @@ Const COST_PATH = "\Архив\Cost.accdb" ' Цены
   End With
 End Sub
 
-Public Function CostChanged() As Boolean ' Передаём SuppDiff rev.340
+Public Function CostChanged() As Boolean ' Передаём SuppDiff rev.420
 Dim Conn As Object, LastCostDate As Long
   Set Conn = CreateObject("Scripting.FileSystemObject") ' fso
   If Conn.FileExists(cstPath) Then LastCostDate = Mid(Log(Conn _
@@ -124,14 +123,19 @@ Dim Conn As Object, LastCostDate As Long
   If LastCostDate > 0 And Settings.Count > 0 Then ' rev.410
     ' Проверка изменения файла с ценами
     If LastCostDate <> Settings("CostDate") Then
-      If Len(cnfRenew) > 0 And Settings("CostDate") > 0 Then _
-        ErrCollection 30, 1, 64 ' EPN = 1
-      CostChanged = True
+      If Len(cnfRenew) > 0 And Settings("CostDate") > 0 Then ' rev.420
+        MsgBox "CostChanged"
+        If MsgBox("Внимание! Обновился файл ЦЕНЫ. Пересчитать статистику? ", _
+          64 + 4, "Требуется обновление ") = vbYes Then Application _
+          .ScreenUpdating = False: ThisWb.Sheets(Sh_List(1)).Activate: _
+          Auto_Open: Application.ScreenUpdating = True: ThisWb.Saved = False
+        Exit Function
+      End If: CostChanged = True
     End If: SuppDiff = LastCostDate
   End If
 End Function
 
-'''
+' Обновление формул на всех листах или в текущей строке
 Public Sub CostUpdate(Optional ByVal Supplier As String = "*") ' rev.380
 Dim App_Sh As Worksheet, RecRows As Integer, Item As Integer, Rec() As Variant
 Dim TEMP_COUNT As Long ' ВРЕМЕННО
@@ -165,7 +169,7 @@ If Not App_Sh.CodeName Like SHEETS_ALL Then MsgBox "CostUpdate для " & App_Sh
 '          Debug.Print PartNumRow; " "; ActiveCell.Row: Stop
           Rec = .Cells(PartNumRow, 1).Resize(RecRows, 51).FormulaR1C1 ' rev.390
           For Item = LBound(Rec, 1) To UBound(Rec, 1)
-            If GetSuppRow(Rec(Item, 5), IIf(.CodeName = "OE_", Date, Rec(Item, 6))) _
+            If GetSuppRow(Rec(Item, 5), IIf(.CodeName = "OE_", Date, CDate(Val(Rec(Item, 6))))) _
             And Rec(Item, 5) Like Supplier Then  ' Поиск строки SuppNumRow у поставщика rev.420
               Debug.Print SuppNumRow ' Поиск строки SuppNumRow у поставщика
               Rec(Item, 2) = "='" & cnfRenew & "'!R" & SuppNumRow & "C4"
@@ -262,7 +266,7 @@ If Not App_Sh.CodeName Like SHEETS_ALL Then MsgBox "CostUpdate для " & App_Sh
         UnprotectSheet(ThisWb.Sheets(Sh_List(CONF))) _
           .Range(CONF & "CostDate") = 0
         ProtectSheet ThisWb.Sheets(Sh_List(CONF)): Exit For
-      End If: If RecRows = 1 Then Exit For ' rev.390
+      End If: If Len(Supplier) > 1 Then Exit For ' rev.420
     End If
   Next App_Sh: Application.StatusBar = False ' Erase Get_Supp
 End Sub
@@ -302,7 +306,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               .Range("A1:O1").Copy Destination:=.Range("A1")
               'SendKeys "^{HOME}", False ' rev.250 Фокус должен быть на MS Excel
               '.Cells(1, 1).AutoFilter
-            .Tab.ColorIndex = 23: LastRow = LastRow + 1 ' rev.410
+            .Tab.ColorIndex = -4142: LastRow = LastRow + 8 ' rev.420
             If .AutoFilterMode Then .ShowAllData Else .Cells(1, 1).AutoFilter ' Автофильтр
             PreError = PreError + 1
             
@@ -311,6 +315,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               .Columns("A:AB").Locked = False: .Rows("1:1").Locked = True
               .Columns("P:X").Columns.Group ' rev.380
             End If
+            '.Outline.ShowLevels ColumnLevels:=2 ' rev.420
+            
             ' Форматирование колонок
             .Columns("C:D").NumberFormat = "@" ' rev.400
             .Columns("O:O").NumberFormat = "m/d/yyyy"
@@ -329,12 +335,13 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               .LineStyle = xlContinuous: .Weight = xlThin
             End With
             ' Сортировка
-            SortSupplier App_Sh, 10, 15 ' rev.360
+            If .Cells.SpecialCells(xlLastCell).Row > &HE Then _
+              SortSupplier App_Sh, 10, 15 ' rev.420
             PreError = PreError + 1
             ' Условное форматирование
             If Val(Application.Version) >= 12 Then
-              With .Range("A2:A" & LastRow & ",D2:E" & LastRow & ",K2:K" & LastRow).FormatConditions _
-                .Add(Type:=xlBlanksCondition) ' rev.410
+              With .Range("A2:A" & LastRow & ",D2:E" & LastRow & ",K2:L" & LastRow).FormatConditions _
+                .Add(Type:=xlBlanksCondition) ' rev.420
                 .Interior.ColorIndex = 3: .StopIfTrue = True
               End With
               With .Range("D2:D" & LastRow).FormatConditions _
@@ -346,23 +353,27 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
                 .Interior.ColorIndex = 44: .StopIfTrue = True
               End With
               ' Поставщик (кратко)
-              With .Range("J2:J" & LastRow - 1 & ",O2:O" & LastRow - 1).FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И(НЕ(ЕПУСТО($J2));" _
-                  & "ИЛИ(ЕПУСТО($A2);ЕПУСТО($K2);ЕСЛИ($A2=""Ю/Л"";ЕПУСТО($L2))))") ' rev.410
+              With .Range("J2:J" & LastRow).FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И(НЕ(ЕПУСТО($J2));ИЛИ(" _
+                  & "ЕПУСТО($A2);ЕПУСТО($K2);ЕСЛИ($A2=""Ю/Л"";ЕПУСТО($L2))))")
                 .Font.ColorIndex = 2: .Interior.ColorIndex = 9
                 .StopIfTrue = True: .SetFirstPriority
               End With
+              With .Range("A2:Z" & LastRow).FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=ЕПУСТО($J2)") ' rev.420
+                .StopIfTrue = True: .SetFirstPriority
+              End With
               If .CodeName = SUPP Then
-                With .Range("J2:J" & LastRow + 1).FormatConditions _
+                With .Range("A2:A" & LastRow & ",J2:J" & LastRow).FormatConditions _
                   .Add(Type:=xlExpression, Formula1:="=И(НЕ(ЕПУСТО(СМЕЩ($J2;-1;" _
-                    & "0)));ЕПУСТО($J2))") ' rev.360
-                  .Interior.ColorIndex = 44: .StopIfTrue = True
+                    & "0)));ЕПУСТО($J2))") ' rev.420
+                  .Interior.ColorIndex = 44: .StopIfTrue = True: .SetFirstPriority
                 End With
                 ' ИНН
                 With .Range("W2:W" & LastRow).FormatConditions _
                   .Add(Type:=xlExpression, Formula1:="=ИЛИ(ЕСЛИ(НЕ(ЕЧИСЛО($W2));" _
-                    & "1;ЦЕЛОЕ($W2)<>$W2);ИЛИ(И($A2=""Ф/Л"";ДЛСТР($W2)<11));" _
-                    & "И($A2=""Ю/Л"";ДЛСТР($W2)>10))")
+                    & "1;ЦЕЛОЕ($W2)<>$W2);ИЛИ(И($A2=""Ф/Л"";ИЛИ(ДЛСТР($W2)<11;ДЛСТР($W2)>12)));" _
+                    & "И($A2=""Ю/Л"";ИЛИ(ДЛСТР($W2)<9;ДЛСТР($W2)>10)))")
                   .Interior.ColorIndex = 44: .StopIfTrue = True
                 End With
                 .Range("L2:AB" & LastRow).FormatConditions.Add Type:=xlNoBlanksCondition ' rev.410
@@ -469,8 +480,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               End With
               With .Range("W2:W" & LastRow).Validation ' ИНН
                 .Add Type:=xlValidateCustom, AlertStyle:=xlValidAlertStop, _
-                  Formula1:="=AND(OR(AND($A2=""Ф/Л"",LEN($W2)<13)," _
-                  & "AND($A2=""Ю/Л"",LEN($W2)<11)),LEN($W2)>8)"
+                  Formula1:="=OR(AND($A2=""Ф/Л"",LEN($W2)>10,LEN($W2)<13)," _
+                  & "AND($A2=""Ю/Л"",LEN($W2)>8,LEN($W2)<11))" ' rev.420
                 .ErrorTitle = "ИНН"
                 .ErrorMessage = "Идентификационный номер налогоплательщика " _
                   & "должен содержать: " & vbCrLf & vbTab & "для Ф/Л  от 11 " _
@@ -493,7 +504,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               .Range("K2").Select: ActiveWindow.FreezePanes = True
             End If
           Case "OE_" ' rev.410
-            .Tab.ColorIndex = 23: LastRow = LastRow + 9
+            .Tab.ColorIndex = -4142: LastRow = LastRow + 9 ' rev.420
             If .AutoFilterMode Then .ShowAllData Else .Cells(1, 1).AutoFilter ' Автофильтр
             PreError = PreError + 1
             
@@ -521,7 +532,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               .LineStyle = xlContinuous: .Weight = xlMedium
             End With
             ' Сортировка
-            SortSupplier App_Sh, 11
+            If .Cells.SpecialCells(xlLastCell).Row > &HE Then _
+              SortSupplier App_Sh, 11 ' rev.420
             PreError = PreError + 1
             ' Условное форматирование
             If Val(Application.Version) >= 12 Then
@@ -540,7 +552,7 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
             ' Закрепление области
             .Range("F2").Select: ActiveWindow.FreezePanes = True
           Case "SB_", "SF_"
-            .Tab.ColorIndex = 24: LastRow = LastRow + 99
+            .Tab.ColorIndex = IIf(.CodeName = "SF_", 24, 37): LastRow = LastRow + 99 ' rev.420
               'SendKeys "^{HOME}", False ' rev.250 Фокус должен быть на MS Excel
               '.Cells(1, 1).AutoFilter
               
@@ -556,7 +568,9 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
             .Columns("B:D").Columns.Group: .Columns("I:S").Columns.Group ' rev.340
             .Columns("Z:AC").Columns.Group: .Columns("AE:AG").Columns.Group ' rev.390
             '.Columns("AG:AQ").Columns.Group: .Columns("AL:AO").Columns.Group
-            .Columns("AI:AS").Columns.Group: .Columns("AN:AQ").Columns.Group ' rev.390
+            .Columns("AI:AS").Columns.Group: .Columns("AI").Columns.Group ' rev.420
+            .Columns("AN:AQ").Columns.Group
+            '.Outline.ShowLevels ColumnLevels:=2 ' rev.420
             
             ' Форматирование колонок
             .Columns("A:D").NumberFormat = "General"
@@ -580,7 +594,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               .LineStyle = xlContinuous: .Weight = xlMedium
             End With
             ' Сортировка
-            SortSupplier App_Sh, 6, 7
+            If .Cells.SpecialCells(xlLastCell).Row > &HE Then _
+              SortSupplier App_Sh, 6, 7 ' rev.420
             PreError = PreError + 1
             ' Условное форматирование
             If Val(Application.Version) >= 12 Then
@@ -607,6 +622,10 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               With .Range("G2:G" & LastRow).FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=И($E2<>"""";$G2="""";$Y2<>"""")") ' rev.390
                 .Interior.ColorIndex = 44: .StopIfTrue = True ' rev.380
+              End With
+              With .Range("H2:H" & LastRow).FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И($H2="""";$S2=""" & Right(CONTROFORM_LIST, InStrRev(CONTROFORM_LIST, ",") - 2) & """)") ' rev.420
+                .Interior.ColorIndex = 44: .StopIfTrue = True
               End With
               With .Range("K:X").FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=$X1=""не оплач.""") ' Перемещено rev.380
@@ -642,6 +661,10 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               With .Range("Y:AS").FormatConditions _
                 .Add(Type:=xlCellValue, Operator:=xlLess, Formula1:="=0") ' rev.390
                 .Interior.ColorIndex = 3: .StopIfTrue = True ' rev.360
+              End With
+              With .Range("Y2:Y" & LastRow).FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И($E2<>"""";$G2<>"""";$Y2="""")") ' rev.390
+                .Interior.ColorIndex = 44: .StopIfTrue = True ' rev.420
               End With
               With .Range("Y2:AC" & LastRow).FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=И(СЧЁТЗ($Z2:$AB2)>2;СУММ($Z2:$AC2)<>$Y2)") ' rev.390
@@ -714,13 +737,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
             
             ' Закрепление области
             .Range("G2").Select: ActiveWindow.FreezePanes = True
-            With Selection ' Выделяем ячейку, последнюю в столбце rev.410
-              If LastRow > &H10 And Len(.Value) > 0 Then _
-                .End(xlDown).Offset(1, 0).Select
-            End With: ActiveWindow.ScrollRow = IIf(ActiveCell.Row > &H10, _
-              ActiveCell.Row - &H10, 1)
           Case "OU_" ' rev.410
-            .Tab.ColorIndex = 23: LastRow = LastRow + 99
+            .Tab.ColorIndex = 38: LastRow = LastRow + 99 ' rev.420
             If .AutoFilterMode Then .ShowAllData Else .Cells(1, 1).AutoFilter ' Автофильтр
             PreError = PreError + 1
             
@@ -749,7 +767,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               .LineStyle = xlContinuous: .Weight = xlMedium
             End With
             ' Сортировка
-            SortSupplier App_Sh, 6
+            If .Cells.SpecialCells(xlLastCell).Row > &HE Then _
+              SortSupplier App_Sh, 6 ' rev.420
             PreError = PreError + 1
             ' Условное форматирование
             If Val(Application.Version) >= 12 Then
@@ -769,13 +788,17 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
                 .Interior.ColorIndex = 48: .StopIfTrue = True
               End With
               
-              With .Range("J:J,V:V").FormatConditions _
-                .Add(Type:=xlExpression, Formula1:="=И(I1<СЕГОДНЯ()-ЕСЛИОШИБКА(ВЫБОР(ПОИСКПОЗ(ИНДЕКС($1:$1;1;СТОЛБЕЦ());J1:J1;0);30;9);14);I1<>"""";J1="""")")
-                .Interior.ColorIndex = 38: .StopIfTrue = True ' rev.360
+              With .Range("I:I").FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И($I1<СЕГОДНЯ()-14;$I1<>"""";$J1="""")")
+                .Interior.ColorIndex = 38: .StopIfTrue = True ' rev.420
               End With
               With .Range("M:N").FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=И(L1>0;M1="""")")
                 .Interior.ColorIndex = 38: .StopIfTrue = True
+              End With
+              With .Range("V:V").FormatConditions _
+                .Add(Type:=xlExpression, Formula1:="=И($U1<СЕГОДНЯ()-14;$U1<>"""";$V1="""")")
+                .Interior.ColorIndex = 38: .StopIfTrue = True ' rev.420
               End With
               With .Range("O:T").FormatConditions _
                 .Add(Type:=xlExpression, Formula1:="=$X1<>""""")
@@ -822,18 +845,14 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
             
             ' Закрепление области
             .Range("G2").Select: ActiveWindow.FreezePanes = True
-            With Selection ' Выделяем ячейку, последнюю в столбце rev.410
-              If LastRow > &H10 And Len(.Value) > 0 Then _
-                .Offset(, -1).End(xlDown).Offset(1, 0).Select ' Отличается
-            End With: ActiveWindow.ScrollRow = IIf(ActiveCell.Row > &H10, _
-              ActiveCell.Row - &H10, 1)
           Case "QB_", "QT_" ' rev.410
-            .Tab.ColorIndex = 23: LastRow = LastRow + 99
+            .Tab.ColorIndex = IIf(.CodeName = "QB_", 36, 40): LastRow = LastRow + 99 ' rev.420
             If .AutoFilterMode Then .ShowAllData Else .Cells(1, 1).AutoFilter ' Автофильтр
             PreError = PreError + 1
             
             .Range("A1:AF1").WrapText = True
-            .Columns("E:V").Locked = False: .Columns("W:Y").Locked = False
+            .Columns("E:G").Locked = False: .Columns("I:I").Locked = False ' rev.420
+            .Columns("K:V").Locked = False: .Columns("W:Y").Locked = False ' rev.420
             .Columns("AB").Locked = False: .Columns("AE:AF").Locked = False
             .Rows("1:1").Locked = True
             .Columns("B:D").Columns.Group: .Columns("H:P").Columns.Group ' rev.410
@@ -859,7 +878,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               .LineStyle = xlContinuous: .Weight = xlMedium
             End With
             ' Сортировка
-            SortSupplier App_Sh, 6, 7
+            If .Cells.SpecialCells(xlLastCell).Row > &HE Then _
+              SortSupplier App_Sh, 6, 7 ' rev.420
             PreError = PreError + 1
             ' Условное форматирование
             If Val(Application.Version) >= 12 Then
@@ -950,13 +970,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
             
             ' Закрепление области
             .Range("G2").Select: ActiveWindow.FreezePanes = True
-            With Selection ' Выделяем ячейку, последнюю в столбце rev.410
-              If LastRow > &H10 And Len(.Value) > 0 Then _
-                .End(xlDown).Offset(1, 0).Select
-            End With: ActiveWindow.ScrollRow = IIf(ActiveCell.Row > &H10, _
-              ActiveCell.Row - &H10, 1)
           Case "SL_" ' rev.410
-            .Tab.ColorIndex = 23: LastRow = LastRow + 99
+            .Tab.ColorIndex = 35: LastRow = LastRow + 99 ' rev.420
             If .AutoFilterMode Then .ShowAllData Else .Cells(1, 1).AutoFilter ' Автофильтр
             PreError = PreError + 1
             
@@ -986,7 +1001,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               .LineStyle = xlContinuous: .Weight = xlMedium
             End With
             ' Сортировка
-            SortSupplier App_Sh, 6, 7
+            If .Cells.SpecialCells(xlLastCell).Row > &HE Then _
+              SortSupplier App_Sh, 6, 7 ' rev.420
             PreError = PreError + 1
             ' Условное форматирование
             If Val(Application.Version) >= 12 Then
@@ -1070,13 +1086,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
             
             ' Закрепление области
             .Range("G2").Select: ActiveWindow.FreezePanes = True
-            With Selection ' Выделяем ячейку, последнюю в столбце rev.410
-              If LastRow > &H10 And Len(.Value) > 0 Then _
-                .End(xlDown).Offset(1, 0).Select
-            End With: ActiveWindow.ScrollRow = IIf(ActiveCell.Row > &H10, _
-              ActiveCell.Row - &H10, 1)
           Case "SR_" ' rev.410
-            .Tab.ColorIndex = 23: LastRow = LastRow + 99
+            .Tab.ColorIndex = -4142: LastRow = LastRow + 99 ' rev.420
             If .AutoFilterMode Then .ShowAllData Else .Cells(1, 1).AutoFilter ' Автофильтр
             PreError = PreError + 1
             
@@ -1106,7 +1117,8 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
               .LineStyle = xlContinuous: .Weight = xlMedium
             End With
             ' Сортировка
-            SortSupplier App_Sh, 6, 7
+            If .Cells.SpecialCells(xlLastCell).Row > &HE Then _
+              SortSupplier App_Sh, 6, 7 ' rev.420
             PreError = PreError + 1
             ' Условное форматирование
             If Val(Application.Version) >= 12 Then
@@ -1157,12 +1169,13 @@ Dim App_Sh As Worksheet, LastRow As Long, PreError As Variant ' rev.380
             
             ' Закрепление области
             .Range("G2").Select: ActiveWindow.FreezePanes = True
-            With Selection ' Выделяем ячейку, последнюю в столбце rev.410
-              If LastRow > &H10 And Len(.Value) > 0 Then _
-                .End(xlDown).Offset(1, 0).Select
-            End With: ActiveWindow.ScrollRow = IIf(ActiveCell.Row > &H10, _
-              ActiveCell.Row - &H10, 1)
-        End Select: .Outline.ShowLevels ColumnLevels:=1: ProtectSheet App_Sh
+        End Select
+        ' Выделяем последнюю в столбце ячейку rev.420
+        With .Range("F" & .Cells.SpecialCells(xlLastCell).Row)
+          If LastRow > &HE And Len(.Value) > 0 Then .Select
+        End With: ActiveWindow.ScrollRow = IIf(ActiveCell.Row > &HE, _
+          ActiveCell.Row - &HE, 1)
+        .Outline.ShowLevels ColumnLevels:=2: ProtectSheet App_Sh ' rev.420
         If Not .CodeName = CONF Then ' Если не скрытый лист rev.370
           With .Cells(1, 1).End(xlToRight).Offset(, 1) ' Скрыть столбцы
             App_Sh.Range(.Address, .End(xlToRight)).EntireColumn.Hidden = True
@@ -1192,7 +1205,6 @@ Dim i As Integer: Counter = 0: i = 2
     On Error Resume Next
       If Len(SuppDiff(10)) > 0 And Len(SuppDiff(11)) > 0 Then ' rev.410
         With UnprotectSheet(ThisWb.Sheets(Sh_List(ARCH)))
-        'With ThisWb.Sheets(Sh_List(ARCH))
           Do Until IsEmpty(.Cells(i, 10)) ' Счётчик строк ' Выполнять ДО
 '''            Stop ' ЗАПИСЬ
             ' Поставщик без «Даты актуальности» не добавляется
@@ -1203,6 +1215,7 @@ Dim i As Integer: Counter = 0: i = 2
             'Debug.Print "RecordCells Err #" & Err.Number: If Err Then Exit Sub
           Loop: If Counter <> 0 Then i = Counter
           
+          .Outline.ShowLevels ColumnLevels:=3 ' rev.420
           .Cells(i, 1).Resize(1, UBound(SuppDiff)) = SuppDiff
           If IsDate(SuppDiff(15)) Then .Cells(i, 15) = CDate(SuppDiff(15)) ' rev.360
           
@@ -1241,15 +1254,15 @@ Public Function CheckSupplier() As Boolean
         .Activate ' rev.410
         
         If CDate(.Cells(SuppNumRow, 15).Value) < CDate(SuppDiff(15)) Then
-          If MsgBox("Новая 'Дата актуальности' " & .Cells(SuppNumRow, 15) _
-            .Value & " не может быть старее предыдущей. ", 1 + 16, _
-            "Дата актуальности") = vbCancel Then _
-          .Cells(SuppNumRow, 15) = CDate(SuppDiff(15)) _
-          Else .Cells(SuppNumRow, 15).Select: Exit Function ' rev.410
+          If MsgBox("У поставщика '" & SuppDiff(10) & "' новая 'Дата актуальн" _
+            & "ости' " & .Cells(SuppNumRow, 15).Value & " не может быть раньш" _
+            & "е предыдущей. ", 1 + 16, "Дата актуальности") = vbCancel Then _
+            .Cells(SuppNumRow, 15) = CDate(SuppDiff(15)) _
+          Else .Cells(SuppNumRow, 15).Select: Exit Function ' rev.420
         End If
         If CDate(.Cells(SuppNumRow, 15).Value) = CDate(SuppDiff(15)) Then
           If MsgBox("У поставщика '" & SuppDiff(10) & "' изменились данные. " _
-            & "Необходимо изменить 'Дату актуальности' на более раннюю. " _
+            & "Необходимо изменить 'Дату актуальности' на более позднюю. " _
             & vbCrLf & "Изменить 'Дату актуальности' " & .Cells(SuppNumRow, _
             15).Value & " на " & "текущую дату? ", 260 + 48, _
             "Данные о поставщике") = vbYes Then _
@@ -1297,22 +1310,25 @@ Dim Src As String, OrgBody As String ''' ???
   ''Stop ' Добавить OrgBody
   Sh.Cells(TargetRow, 11).Validation.Delete ' Очистка проверки данных rev.360
   
-  If Len(OrgBody) > 2 And PERSON_LIST Like "*" & OrgBody & "*" Then ' rev.410
+  If Len(OrgBody) > 2 And PERSON_LIST Like "*" & OrgBody & "*" Then ' rev.420
     For Counter = LBound(Cost(OrgBody), 2) To UBound(Cost(OrgBody), 2)
-      If Cost(OrgBody)(LBound(Cost(OrgBody), 1), Counter) = "?РИЦ" Then _
+      If Not Src Like "*" & Cost(OrgBody)(LBound(Cost(OrgBody), 1), Counter) _
+        & "*" And Asc(Cost(OrgBody)(LBound(Cost(OrgBody), 1), Counter)) <> 63 _
+      Then Src = "," & Cost(OrgBody)(LBound(Cost(OrgBody), 1), Counter) & Src
+      'If Cost(OrgBody)(LBound(Cost(OrgBody), 1), Counter) = "?РИЦ" Then _
         Counter = Counter + 1 ' Пропускаем архивные цены (РИЦ до 2012 года)
-      If Counter > LBound(Cost(OrgBody), 2) Then ' Пропускаем 1-ю запись
+      'If Counter > LBound(Cost(OrgBody), 2) Then ' Пропускаем 1-ю запись
         ' Если таблица «Категория цены» = «Поставщик» <> предыдущее знач.таблицы
-        If Cost(OrgBody)(LBound(Cost(OrgBody), 1), Counter) = Sh.Cells( _
+      '  If Cost(OrgBody)(LBound(Cost(OrgBody), 1), Counter) = Sh.Cells( _
           TargetRow, 10) And Cost(OrgBody)(LBound(Cost(OrgBody), 1), Counter) _
           <> Cost(OrgBody)(LBound(Cost(OrgBody), 1), Counter - 1) Then _
           Src = Cost(OrgBody)(LBound(Cost(OrgBody), 1), Counter) & "," & Src
-      Else
-        Src = "стандарт,?ДПР" ' Исключаем как архивные «Категория цены» = «?РИЦ»
-      End If
+      'Else
+      '  Src = "стандарт,?ДПР" ' Исключаем как архивные «Категория цены» = «?РИЦ»
+      'End If
     Next Counter
-    With Sh.Cells(TargetRow, 11).Validation ' rev.360
-      .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Formula1:=Src
+    With Sh.Cells(TargetRow, 11).Validation ' rev.420
+      .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Formula1:=Mid(Src, 1)
       .ErrorTitle = "Категория цен"
       .ErrorMessage = "Необходимо выбрать значение из списка "
       .ShowError = True: .IgnoreBlank = True
@@ -1388,20 +1404,20 @@ DataExit:
   End If
 End Function
 
-' Поиск строки SuppNumRow с данными о Поставщике на листе "Архив" rev.380
-Public Function GetSuppRow(ByVal Supplier As String, _
-ByVal PartDate As Variant) As Boolean
+' Поиск строки SuppNumRow с данными о Поставщике на листе "Архив" rev.420
+Public Function GetSuppRow(ByVal Supplier As String, ByVal PartDate As Date) _
+As Boolean
   On Error GoTo DataExit ' rev.410
     SuppNumRow = 0: Counter = 1 ' Счётчик строк листа "Архив"; Костыль
     ' ВАЖНО! Обновление списка с Индексами листов
     Do While Len(Get_Supp(10, Counter)) > 0 ' Счётчик строк ' Выполнять ПОКА
       If Get_Supp(10, Counter) = Supplier _
-      And CDate(Get_Supp(15, Counter)) <= CDate(PartDate) Then ' rev.420
+      And CDate(Get_Supp(15, Counter)) <= PartDate Then
         ' ВАЖНО! Если следующая "Дата актуальности" > "Дата поступления", то
         If Get_Supp(10, Counter) <> Get_Supp(10, Counter + 1) Or _
           (Get_Supp(10, Counter) = Get_Supp(10, Counter + 1) _
-        And CDate(Get_Supp(15, Counter + 1)) > CDate(PartDate)) Then _
-          SuppNumRow = Counter + 1: GetSuppRow = True: Exit Function ' rev.380
+        And CDate(Get_Supp(15, Counter + 1)) > PartDate) Then _
+          SuppNumRow = Counter + 1: GetSuppRow = True: Exit Function
       End If: Counter = Counter + 1
     Loop: Exit Function ' rev.410
 DataExit:
@@ -1409,14 +1425,15 @@ DataExit:
 End Function
 
 Public Function GetDateAndCosts(ByVal CodeNameSheet As String, ByVal PartDate _
-As Variant) As Variant ' Цены поставщика (только для ShowCosts) rev.410
+As Variant) As Variant ' Цены поставщика (только для ShowCosts) rev.420
 Dim OrgBody As String: If IsArray(PartDate) Then OrgBody = PartDate(1)
   If PERSON_LIST Like "*" & cnfRenew & "*" Then ' rev.410
     GetDateAndCosts = MultidimArr(Cost(cnfRenew), SuppNumRow, 1)
     Debug.Print UBound(Cost(cnfRenew)) ' Верхняя граница Коллекции
     cnfRenew = cnfRenew & " " & Cost(cnfRenew)(0, SuppNumRow)
   ElseIf IsArray(PartDate) Then
-    If Len(PartDate(15)) > 0 And CDate(PartDate(15)) >= Settings("date0") Then
+    If Len(PartDate(15)) > 0 And IsDate(PartDate(15)) Then ' rev.420
+    If CDate(PartDate(15)) >= Settings("date0") Then
       'Debug.Print UBound(Cost(OrgBody)); cnfRenew ' Верхняя граница Коллекции
       cnfRenew = PartDate(1) & " " & PartDate(11) ' Имя таблицы ЦЕНЫ rev.410
       For Counter = LBound(Cost(OrgBody), 2) To UBound(Cost(OrgBody), 2)
@@ -1432,6 +1449,7 @@ Dim OrgBody As String: If IsArray(PartDate) Then OrgBody = PartDate(1)
       Next Counter: If Counter > UBound(Cost(OrgBody), 2) Then _
         ErrCollection 50, 1, 16, cnfRenew Else GetDateAndCosts = _
         MultidimArr(Cost(OrgBody), Counter, 1) ' EPN = 1 rev.410
+    End If
     End If
   End If
 End Function

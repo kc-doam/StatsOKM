@@ -16,7 +16,7 @@ Private Sub SendKeyEnter() ' Эмуляция нажатия клавиши «En
       SendKeys "{ESC}", True: SendKeys "{ENTER}", False ' Костыль
 End Sub
 
-Private Sub SendKeysCtrlV() ' Эмуляция нажатия клавиш «Ctrl+V» rev.370
+Private Sub SendKeysCtrlV() ' Эмуляция нажатия клавиш «Ctrl+V» rev.420
   On Error Resume Next
     With Selection
       .PasteSpecial Paste:=xlPasteValues, Operation:=xlNone
@@ -24,7 +24,14 @@ Private Sub SendKeysCtrlV() ' Эмуляция нажатия клавиш «Ctr
         ' Вставка форматов, Очистка условного форматирования
         .PasteSpecial Paste:=xlPasteFormats, Operation:=xlNone
         .Cells.FormatConditions.Delete
-      End If: If Err Then ActiveSheet.PasteSpecial Format:="Текст"
+      End If
+      If Err Then
+        ReDim Get_Supp(ActiveSheet.Cells.SpecialCells(xlLastCell).Row)
+        For Counter = LBound(Get_Supp) To UBound(Get_Supp)
+          Get_Supp(Counter) = .Offset(Counter - SuppNumRow, 0).Value
+        Next Counter: ActiveSheet.PasteSpecial Format:="Текст"
+        Erase Get_Supp
+      End If
     End With
 End Sub
 
@@ -53,7 +60,7 @@ Dim N_List As New Collection, iND As Object, bank As String, suffix As String
 Const ACC_PATH = "X:\Avtor_M\#Finansist\YCHET" ' Директория «YCHET» rev.330
   ' ВАЖНО! Обновление списка с Индексами листов
   If GetSheetIndex(CONF) < 1 Then ErrCollection 1001, 1, 16 ' EPN = 1
-'  Worksheets(Sh_List(CONF)).Visible = xlSheetVeryHidden ' СКРЫТЬ rev.330
+  Worksheets(Sh_List(CONF)).Visible = xlSheetVeryHidden ' СКРЫТЬ rev.420
   RemoveCollection Cost: RemoveCollection Settings ' rev.410
   Settings.Add DateSerial(2009, 1, 1), "date0"
   On Error Resume Next
@@ -158,6 +165,35 @@ Dim Arr As Variant
   End If
 End Function
 
+' Удаление непечатаемых символов и «лишних» пробелов ' rev.420
+Public Function ClearSpacesInText(ByVal text As String) As String
+  text = Replace(text, Chr(160), " ")      ' неразрывный пробел
+  'text = Replace(text, ".", ". ") ' Ошибка при проверке "т.п."
+  text = Replace(text, " .", ". ")
+  text = Replace(Replace(text, ",", ", "), " ,", ", ")
+  text = Replace(Replace(text, "!", "! "), " !", "! ")
+  text = Replace(Replace(text, "?", "? "), " ?", "? ")
+  text = Replace(Replace(text, ":", ": "), " :", ": ")
+  text = Replace(Replace(text, ";", "; "), " :", ": ")
+  text = Replace(Replace(text, "( ", "("), " )", ")")
+  text = Replace(text, Chr(10), " ")       ' Перевод строки
+  text = Replace(text, Chr(13), " ")       ' Перевод каретки
+  text = Replace(text, Chr(150), Chr(45))  ' Короткое тире
+  text = Replace(text, Chr(151), Chr(45))  ' Длинное тире
+  text = Replace(text, Chr(133), "...")    ' Многоточие
+  text = Replace(text, Chr(172), "")       ' знак переноса
+  Do While text Like "*  *" ' Выполнять ПОКА есть двойной пробел
+    text = Replace(text, "  ", " ")
+  Loop
+  text = Replace(text, Chr(39), Chr(34))   ' апостроф
+  text = Replace(text, Chr(171), Chr(34))  ' левые двойные кавычки
+  text = Replace(text, Chr(187), Chr(34))  ' правые двойные кавычки
+  text = Replace(text, Chr(147), Chr(34))  ' левые четверть круга кавычки
+  text = Replace(text, Chr(148), Chr(34))  ' правые четверть круга кавычки
+  text = Replace(text, Chr(34) & Chr(34), Chr(34))
+  ClearSpacesInText = Trim(text)
+End Function
+
 ' Указания для пользователя при возникновении ошибки
 Public Sub ErrCollection(ByVal ErrNumber As Long, ByVal ErrPartNum As Byte, _
 ByVal Icon As Byte, Optional ByVal Str As String)
@@ -174,8 +210,8 @@ Dim Ask As Byte, Msg As String, Title As String
     Case 20: Ask = 0: Msg = "У поставщика '" & Str & "' изменились основные да" _
       & "нные. " & vbCrLf & "Перед сохранением необходимо изменить поле 'Дата " _
       & "актуальности'. " & vbCrLf: Icon = 48: Title = "Ошибка ввода данных "
-    Case 30: Ask = 2: Msg = "Внимание! Обновился файл ЦЕНЫ. ": Title = _
-      "Требуется обновление "
+    Case 30: Ask = 0: Msg = "Вы пытались вставить диапазон ячеек. " & vbCrLf _
+      & "На данном листе из буфера обмена можно вставить только первую строку."
     ' В данной версии нет предупреждения «Дата поступления» с пустым поставщиком
     Case 40: If Str Like "*''*" Then _
       Ask = 5: Msg = "Не указан поставщик " & Mid(Str, 19) & ". ": Icon = 64 _
